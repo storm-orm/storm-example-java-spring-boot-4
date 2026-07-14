@@ -82,7 +82,7 @@ internet access.
 src/main/java/st/orm/demo/imdb/
 ├── model/          Storm entities (@PK, @FK) and projections, as records
 ├── repository/     EntityRepository interfaces with QueryBuilder queries
-├── service/        Business logic in @Transactional service methods,
+├── service/        Business logic in Storm transaction(...) blocks,
 │                   plus the streaming IMDB importer
 ├── web/            MVC controllers (pages) and REST controllers (/api/**)
 └── serialization/  Jackson support: custom serializers and the
@@ -105,11 +105,17 @@ Each part of the app demonstrates a Storm feature:
   methods using the type-safe QueryBuilder and generated metamodel
   (`Movie_.startYear`, `Principal_.person`). Aggregations return plain records;
   computed expressions use `RAW` SQL string templates with metamodel references.
-- **Transactions** (`service/`): Spring's declarative `@Transactional` at the
-  service level. Storm's Spring integration binds repository operations to the
-  active transaction, so the writes on a request either all commit or all roll
-  back. The two operations with a non-trivial boundary (the importer and the
-  gallery service) use Spring's programmatic `TransactionTemplate`.
+- **Transactions** (`service/`): Storm's programmatic `transaction(...)` API
+  at the service level, with `TransactionOptions` for the read-only request
+  boundaries. `MovieService.viewMovie` is the one declarative `@Transactional`
+  example: both run through the same Spring transaction manager, so they
+  compose freely. The gallery service keeps Spring's programmatic
+  `TransactionTemplate` for its split fetch/store boundary.
+- **Observability** (`application.yaml`): every query and transaction is
+  reported as a Micrometer Observation (`storm.query`, `storm.transaction`),
+  surfaced by Actuator at `/actuator/metrics/storm.query`. Query observations
+  follow the OpenTelemetry database semantic conventions, and the trace
+  context rides along as a SQL comment on every statement.
 - **Streaming import** (`service/ImdbDataImporter.java`): a `Stream`-based
   pipeline that parses TSV rows into entities and hands them to Storm's batch
   insert, one pass per file, without materializing entity lists.

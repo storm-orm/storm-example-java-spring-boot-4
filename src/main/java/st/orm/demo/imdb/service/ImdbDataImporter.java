@@ -1,5 +1,7 @@
 package st.orm.demo.imdb.service;
 
+import static st.orm.template.Transactions.transaction;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -33,8 +35,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 import st.orm.demo.imdb.model.Genre;
 import st.orm.demo.imdb.model.Movie;
 import st.orm.demo.imdb.model.MovieGenre;
@@ -82,7 +82,6 @@ public class ImdbDataImporter implements ApplicationRunner {
     private final MovieViewRepository movieViewRepository;
     private final ObjectMapper objectMapper;
     private final ImdbImportProperties properties;
-    private final TransactionTemplate transaction;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -96,8 +95,7 @@ public class ImdbDataImporter implements ApplicationRunner {
                             RatingRepository ratingRepository,
                             MovieViewRepository movieViewRepository,
                             ObjectMapper objectMapper,
-                            ImdbImportProperties properties,
-                            PlatformTransactionManager transactionManager) {
+                            ImdbImportProperties properties) {
         this.movieRepository = movieRepository;
         this.genreRepository = genreRepository;
         this.movieGenreRepository = movieGenreRepository;
@@ -107,7 +105,6 @@ public class ImdbDataImporter implements ApplicationRunner {
         this.movieViewRepository = movieViewRepository;
         this.objectMapper = objectMapper;
         this.properties = properties;
-        this.transaction = new TransactionTemplate(transactionManager);
     }
 
     private record RatingRow(BigDecimal averageRating, int voteCount) {}
@@ -125,10 +122,11 @@ public class ImdbDataImporter implements ApplicationRunner {
         long startedAt = System.currentTimeMillis();
         logger.info("Importing IMDB dataset (movies with at least {} votes)...", properties.minimumVoteCount());
 
-        // One explicit Storm transaction around the whole import: a failure
-        // rolls everything back, so a restart always begins from a clean
-        // database.
-        transaction.executeWithoutResult(status -> {
+        // One Storm transaction around the whole import: a failure rolls
+        // everything back, so a restart always begins from a clean database.
+        // The transaction runs through Spring's transaction manager via the
+        // starter's provider, exactly like @Transactional-managed work.
+        transaction(tx -> {
             Map<String, RatingRow> qualifyingRatings = readQualifyingRatings();
             ImportedMovies imported = importMovies(qualifyingRatings.keySet());
             importGenres(imported.moviesById(), imported.genreNamesByMovieId());
@@ -137,6 +135,7 @@ public class ImdbDataImporter implements ApplicationRunner {
             importPrincipals(principalRows, imported.moviesById(), personsById);
             importRatings(imported.moviesById(), qualifyingRatings);
             seedFeaturedMovie();
+            return null;
         });
 
         logger.info("IMDB import finished in {} seconds.", (System.currentTimeMillis() - startedAt) / 1000);

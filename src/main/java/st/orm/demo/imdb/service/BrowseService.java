@@ -1,7 +1,10 @@
 package st.orm.demo.imdb.service;
 
+import static st.orm.template.Transactions.transaction;
+
+import st.orm.TransactionOptions;
+
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import st.orm.Scrollable;
 import st.orm.Window;
 import st.orm.demo.imdb.model.Genre;
@@ -14,6 +17,9 @@ import st.orm.demo.imdb.repository.MovieSummaryRepository;
 
 @Service
 public class BrowseService {
+
+    /** Read-only Storm transaction: one consistent snapshot across the queries of a request. */
+    private static final TransactionOptions READ_ONLY = TransactionOptions.defaults().withReadOnly(true);
 
     private static final int PAGE_SIZE = 24;
 
@@ -30,17 +36,18 @@ public class BrowseService {
     }
 
     /** The browse page: genre, count, and first window in one read-only transaction. */
-    @Transactional(readOnly = true)
     public BrowseView browseGenre(String genreName) {
-        Genre genre = genreRepository.findByName(genreName).orElse(null);
-        if (genre == null) {
-            return null;
-        }
-        return new BrowseView(
-                genre,
-                movieGenreRepository.countBy(MovieGenre_.genre, genre),
-                movieSummaryRepository.scrollByGenre(genre, Scrollable.of(MovieSummary_.id, PAGE_SIZE))
-        );
+        return transaction(READ_ONLY, tx -> {
+            Genre genre = genreRepository.findByName(genreName).orElse(null);
+            if (genre == null) {
+                return null;
+            }
+            return new BrowseView(
+                    genre,
+                    movieGenreRepository.countBy(MovieGenre_.genre, genre),
+                    movieSummaryRepository.scrollByGenre(genre, Scrollable.of(MovieSummary_.id, PAGE_SIZE))
+            );
+            });
     }
 
     /**
@@ -48,15 +55,16 @@ public class BrowseService {
      * cursor is the opaque string from the previous response (null requests
      * the first window) — the client echoes it back unchanged.
      */
-    @Transactional(readOnly = true)
     public Window<MovieSummary> scrollGenre(String genreName, String cursor) {
-        Genre genre = genreRepository.findByName(genreName).orElse(null);
-        if (genre == null) {
-            return null;
-        }
-        Scrollable<MovieSummary> scrollable = cursor != null
-                ? Scrollable.fromCursor(MovieSummary_.id, cursor)
-                : Scrollable.of(MovieSummary_.id, PAGE_SIZE);
-        return movieSummaryRepository.scrollByGenre(genre, scrollable);
+        return transaction(READ_ONLY, tx -> {
+            Genre genre = genreRepository.findByName(genreName).orElse(null);
+            if (genre == null) {
+                return null;
+            }
+            Scrollable<MovieSummary> scrollable = cursor != null
+                    ? Scrollable.fromCursor(MovieSummary_.id, cursor)
+                    : Scrollable.of(MovieSummary_.id, PAGE_SIZE);
+            return movieSummaryRepository.scrollByGenre(genre, scrollable);
+            });
     }
 }

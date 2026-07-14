@@ -1,11 +1,11 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.Nullable;
 
 /** A single photo in a person's gallery. */
 public record Photo(
-        @Nonnull String url,
-        String caption
+        String url,
+        @Nullable String caption
 ) {
 
     public Photo(String url) {

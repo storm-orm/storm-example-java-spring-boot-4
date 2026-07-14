@@ -1,6 +1,5 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import st.orm.Entity;
 import st.orm.FK;
@@ -23,10 +22,10 @@ import tools.jackson.databind.annotation.JsonSerialize;
  */
 public record MovieView(
         @PK Long id,
-        @Nonnull @FK Ref<Movie> movie,
+        @FK Ref<Movie> movie,
         @JsonSerialize(using = InstantAsStringSerializer.class)
         @JsonDeserialize(using = InstantAsStringSerializer.Deserializer.class)
-        @Nonnull Instant viewedAt
+        Instant viewedAt
 ) implements Entity<Long> {
 
     public MovieView(Movie movieEntity, Instant viewedAt) {

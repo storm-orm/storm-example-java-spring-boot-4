@@ -1,6 +1,6 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.Nullable;
 import st.orm.Entity;
 import st.orm.FK;
 import st.orm.GenerationStrategy;
@@ -17,11 +17,11 @@ import st.orm.Persist;
  */
 public record Principal(
         @PK(generation = GenerationStrategy.NONE) PrincipalPk id,
-        @Nonnull @FK @Persist(insertable = false, updatable = false) Movie movie,
-        @Nonnull @FK Person person,
+        @FK @Persist(insertable = false, updatable = false) Movie movie,
+        @FK Person person,
         @Persist(insertable = false, updatable = false) int ordering,
-        @Nonnull String category,
-        String characters
+        String category,
+        @Nullable String characters
 ) implements Entity<PrincipalPk> {
 
     public Principal(Movie movie, int ordering, Person person, String category, String characters) {

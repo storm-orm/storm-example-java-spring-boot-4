@@ -1,7 +1,10 @@
 package st.orm.demo.imdb.service;
 
+import static st.orm.template.Transactions.transaction;
+
+import st.orm.TransactionOptions;
+
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import st.orm.Scrollable;
 import st.orm.Window;
 import st.orm.demo.imdb.model.MovieSummary;
@@ -13,6 +16,9 @@ import st.orm.demo.imdb.repository.PersonSummaryRepository;
 
 @Service
 public class SearchService {
+
+    /** Read-only Storm transaction: one consistent snapshot across the queries of a request. */
+    private static final TransactionOptions READ_ONLY = TransactionOptions.defaults().withReadOnly(true);
 
     private static final int MOVIE_PAGE_SIZE = 18;
     private static final int PERSON_PAGE_SIZE = 12;
@@ -29,12 +35,13 @@ public class SearchService {
     }
 
     /** The search page: both first windows in one read-only transaction. */
-    @Transactional(readOnly = true)
     public SearchResults search(String query) {
-        return new SearchResults(
-                movieSummaryRepository.searchByTitle(query, Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE)),
-                personSummaryRepository.searchByName(query, Scrollable.of(PersonSummary_.id, PERSON_PAGE_SIZE))
-        );
+        return transaction(READ_ONLY, tx -> {
+            return new SearchResults(
+                    movieSummaryRepository.searchByTitle(query, Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE)),
+                    personSummaryRepository.searchByName(query, Scrollable.of(PersonSummary_.id, PERSON_PAGE_SIZE))
+            );
+            });
     }
 
     /**
@@ -59,11 +66,12 @@ public class SearchService {
     }
 
     /** Auto-complete: movie and person suggestions in one read-only transaction. */
-    @Transactional(readOnly = true)
     public Suggestions findSuggestions(String query) {
-        return new Suggestions(
-                movieSummaryRepository.findTitleSuggestions(query, MOVIE_SUGGESTION_LIMIT),
-                personSummaryRepository.findNameSuggestions(query, PERSON_SUGGESTION_LIMIT)
-        );
+        return transaction(READ_ONLY, tx -> {
+            return new Suggestions(
+                    movieSummaryRepository.findTitleSuggestions(query, MOVIE_SUGGESTION_LIMIT),
+                    personSummaryRepository.findNameSuggestions(query, PERSON_SUGGESTION_LIMIT)
+            );
+            });
     }
 }

@@ -1,6 +1,6 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.Nullable;
 import st.orm.DbTable;
 import st.orm.GenerationStrategy;
 import st.orm.PK;
@@ -14,7 +14,7 @@ import st.orm.Projection;
 @DbTable("movie")
 public record MovieSummary(
         @PK(generation = GenerationStrategy.NONE) String id,
-        @Nonnull String primaryTitle,
-        Integer startYear
+        String primaryTitle,
+        @Nullable Integer startYear
 ) implements Projection<String> {
 }

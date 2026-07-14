@@ -1,6 +1,5 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
 import st.orm.DbTable;
 import st.orm.GenerationStrategy;
 import st.orm.PK;
@@ -13,6 +12,6 @@ import st.orm.Projection;
 @DbTable("person")
 public record PersonSummary(
         @PK(generation = GenerationStrategy.NONE) String id,
-        @Nonnull String primaryName
+        String primaryName
 ) implements Projection<String> {
 }

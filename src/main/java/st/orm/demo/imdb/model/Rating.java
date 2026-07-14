@@ -1,6 +1,5 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
 import java.math.BigDecimal;
 import st.orm.Entity;
 import st.orm.FK;
@@ -13,7 +12,7 @@ import st.orm.PK;
  */
 public record Rating(
         @PK(generation = GenerationStrategy.NONE) @FK Movie movie,
-        @Nonnull BigDecimal averageRating,
+        BigDecimal averageRating,
         int voteCount
 ) implements Entity<Movie> {
 }

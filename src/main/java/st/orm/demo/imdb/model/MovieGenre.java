@@ -1,6 +1,5 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
 import st.orm.Entity;
 import st.orm.FK;
 import st.orm.GenerationStrategy;
@@ -14,8 +13,8 @@ import st.orm.Persist;
  */
 public record MovieGenre(
         @PK(generation = GenerationStrategy.NONE) MovieGenrePk id,
-        @Nonnull @FK @Persist(insertable = false, updatable = false) Movie movie,
-        @Nonnull @FK @Persist(insertable = false, updatable = false) Genre genre
+        @FK @Persist(insertable = false, updatable = false) Movie movie,
+        @FK @Persist(insertable = false, updatable = false) Genre genre
 ) implements Entity<MovieGenrePk> {
 
     public MovieGenre(Movie movie, Genre genre) {

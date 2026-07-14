@@ -46,6 +46,12 @@ public class MovieService {
      * Loads the movie detail page and records the visit, so the movie shows
      * up in the recently-viewed section on the home page. The view insert
      * and the page reads share one transaction.
+     *
+     * <p>This is the one declarative example in this application: the rest of
+     * the services use Storm's programmatic {@code transaction(...)} API. Both
+     * run through the same Spring transaction manager, so they compose freely;
+     * Storm repository calls inside this method join the @Transactional
+     * transaction, and a programmatic block inside it would join as well.</p>
      */
     @Transactional
     public MovieDetail viewMovie(String movieId) {

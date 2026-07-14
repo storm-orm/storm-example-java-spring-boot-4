@@ -1,6 +1,5 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import st.orm.Entity;
 import st.orm.FK;
@@ -14,6 +13,6 @@ import st.orm.PK;
  */
 public record Watchlist(
         @PK(generation = GenerationStrategy.NONE) @FK Movie movie,
-        @Nonnull Instant addedAt
+        Instant addedAt
 ) implements Entity<Movie> {
 }

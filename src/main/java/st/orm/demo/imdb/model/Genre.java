@@ -1,6 +1,5 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
 import st.orm.Entity;
 import st.orm.PK;
 import st.orm.UK;
@@ -12,7 +11,7 @@ import st.orm.UK;
  */
 public record Genre(
         @PK Integer id,
-        @Nonnull @UK String name
+        @UK String name
 ) implements Entity<Integer> {
 
     public Genre(String name) {

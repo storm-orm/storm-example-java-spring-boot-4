@@ -1,6 +1,6 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.Nullable;
 import st.orm.Entity;
 import st.orm.GenerationStrategy;
 import st.orm.PK;
@@ -12,8 +12,8 @@ import st.orm.PK;
  */
 public record Person(
         @PK(generation = GenerationStrategy.NONE) String id,
-        @Nonnull String primaryName,
-        Integer birthYear,
-        Integer deathYear
+        String primaryName,
+        @Nullable Integer birthYear,
+        @Nullable Integer deathYear
 ) implements Entity<String> {
 }

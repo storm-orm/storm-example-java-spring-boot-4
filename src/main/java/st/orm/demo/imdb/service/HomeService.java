@@ -1,11 +1,14 @@
 package st.orm.demo.imdb.service;
 
+import static st.orm.template.Transactions.transaction;
+
+import st.orm.TransactionOptions;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import st.orm.Ref;
 import st.orm.demo.imdb.model.Movie;
 import st.orm.demo.imdb.model.MovieView;
@@ -18,6 +21,9 @@ import st.orm.demo.imdb.repository.WatchlistRepository;
 
 @Service
 public class HomeService {
+
+    /** Read-only Storm transaction: one consistent snapshot across the queries of a request. */
+    private static final TransactionOptions READ_ONLY = TransactionOptions.defaults().withReadOnly(true);
 
     private static final int RECENT_VIEW_SAMPLE_SIZE = 50;
     private static final int RECENTLY_VIEWED_LIMIT = 12;
@@ -47,29 +53,30 @@ public class HomeService {
     }
 
     /** All home page sections, read in one read-only transaction. */
-    @Transactional(readOnly = true)
     public HomeView buildHomeView() {
-        // Views hold movie refs; dedupe the refs and fetch the movies once.
-        List<Ref<Movie>> recentMovieRefs = movieViewRepository.findRecentViews(RECENT_VIEW_SAMPLE_SIZE).stream()
-                .map(MovieView::movie)
-                .distinct()
-                .limit(RECENTLY_VIEWED_LIMIT + 1)
-                .toList();
-        Map<Ref<Movie>, Movie> moviesByRef = movieRepository.findAllByRef(recentMovieRefs).stream()
-                .collect(Collectors.toMap(Ref::of, movie -> movie));
-        List<Movie> recentMovies = recentMovieRefs.stream()
-                .map(moviesByRef::get)
-                .filter(Objects::nonNull)
-                .toList();
+        return transaction(READ_ONLY, tx -> {
+            // Views hold movie refs; dedupe the refs and fetch the movies once.
+            List<Ref<Movie>> recentMovieRefs = movieViewRepository.findRecentViews(RECENT_VIEW_SAMPLE_SIZE).stream()
+                    .map(MovieView::movie)
+                    .distinct()
+                    .limit(RECENTLY_VIEWED_LIMIT + 1)
+                    .toList();
+            Map<Ref<Movie>, Movie> moviesByRef = movieRepository.findAllByRef(recentMovieRefs).stream()
+                    .collect(Collectors.toMap(Ref::of, movie -> movie));
+            List<Movie> recentMovies = recentMovieRefs.stream()
+                    .map(moviesByRef::get)
+                    .filter(Objects::nonNull)
+                    .toList();
 
-        FeaturedMovie featured = recentMovies.isEmpty() ? null : featuredMovie(recentMovies.get(0));
-        return new HomeView(
-                featured,
-                recentMovies.stream().skip(1).limit(RECENTLY_VIEWED_LIMIT).toList(),
-                ratingRepository.findTopRated(TOP_RATED_MINIMUM_VOTES, TOP_RATED_LIMIT),
-                genreRepository.findGenresWithMovieCounts(),
-                watchlistRepository.findMostRecent(WATCHLIST_PREVIEW_LIMIT)
-        );
+            FeaturedMovie featured = recentMovies.isEmpty() ? null : featuredMovie(recentMovies.get(0));
+            return new HomeView(
+                    featured,
+                    recentMovies.stream().skip(1).limit(RECENTLY_VIEWED_LIMIT).toList(),
+                    ratingRepository.findTopRated(TOP_RATED_MINIMUM_VOTES, TOP_RATED_LIMIT),
+                    genreRepository.findGenresWithMovieCounts(),
+                    watchlistRepository.findMostRecent(WATCHLIST_PREVIEW_LIMIT)
+            );
+            });
     }
 
     private FeaturedMovie featuredMovie(Movie movie) {

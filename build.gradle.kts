@@ -1,9 +1,12 @@
 import org.springframework.boot.gradle.plugin.SpringBootPlugin
-import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
     java
     id("org.springframework.boot") version "4.1.0"
+    // The Storm plugin imports the BOM, adds storm-java21 and storm-core, wires the
+    // metamodel annotation processor, and enables the preview flags that Storm's Java
+    // String Templates (JEP 430) require on compile, test, and run (BootRun included).
+    id("st.orm") version "1.13.0"
 }
 
 group = "st.orm.demo"
@@ -24,49 +27,40 @@ repositories {
 
 dependencies {
     implementation(platform(SpringBootPlugin.BOM_COORDINATES))
-    implementation(platform("st.orm:storm-bom:1.12.0"))
-    annotationProcessor(platform("st.orm:storm-bom:1.12.0"))
 
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    // Tracer for the trace-context SQL comments; spans stay local without an exporter.
+    implementation("io.micrometer:micrometer-tracing-bridge-otel")
 
     implementation("st.orm:storm-spring-boot-starter")
-    implementation("st.orm:storm-java21")
     implementation("st.orm:storm-jackson3")
     runtimeOnly("st.orm:storm-postgresql")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
 
-    annotationProcessor("st.orm:storm-metamodel-processor")
-
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("st.orm:storm-test")
+    testImplementation("st.orm:storm-spring-boot-test-autoconfigure")
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("st.orm:storm-h2")
     testRuntimeOnly("com.h2database:h2:2.3.232")
     testImplementation("com.microsoft.playwright:playwright:1.61.0")
 }
 
 // Storm's Java API is built on JDK String Templates (JEP 430), a Java 21
-// preview feature that was removed after JDK 22 — so the toolchain is pinned
-// to Java 21 above and preview features are enabled for every compile and run.
-tasks.withType<JavaCompile>().configureEach {
-    options.compilerArgs.add("--enable-preview")
-}
-
+// preview feature — the toolchain is pinned to Java 21 above, and the Storm
+// plugin enables preview features for every compile, test, and run task.
 tasks.withType<Test>().configureEach {
-    jvmArgs("--enable-preview")
     testLogging {
         events("passed", "failed", "skipped")
         showStandardStreams = true
     }
-}
-
-tasks.withType<BootRun>().configureEach {
-    jvmArgs("--enable-preview")
 }
 
 tasks.test {

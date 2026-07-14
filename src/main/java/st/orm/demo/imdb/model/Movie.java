@@ -1,6 +1,6 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.Nullable;
 import st.orm.Entity;
 import st.orm.GenerationStrategy;
 import st.orm.PK;
@@ -12,9 +12,9 @@ import st.orm.PK;
  */
 public record Movie(
         @PK(generation = GenerationStrategy.NONE) String id,
-        @Nonnull String primaryTitle,
-        @Nonnull String originalTitle,
-        Integer startYear,
-        Integer runtimeMinutes
+        String primaryTitle,
+        String originalTitle,
+        @Nullable Integer startYear,
+        @Nullable Integer runtimeMinutes
 ) implements Entity<String> {
 }

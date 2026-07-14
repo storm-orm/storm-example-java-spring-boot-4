@@ -1,6 +1,5 @@
 package st.orm.demo.imdb.model;
 
-import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import java.util.List;
 import st.orm.Entity;
@@ -19,7 +18,7 @@ import st.orm.PK;
  */
 public record PersonGallery(
         @PK(generation = GenerationStrategy.NONE) @FK Person person,
-        @Nonnull @MetamodelType(Object.class) @Json List<Photo> photos,
-        @Nonnull Instant fetchedAt
+        @MetamodelType(Object.class) @Json List<Photo> photos,
+        Instant fetchedAt
 ) implements Entity<Person> {
 }
