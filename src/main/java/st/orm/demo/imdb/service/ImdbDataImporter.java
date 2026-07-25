@@ -60,8 +60,10 @@ import tools.jackson.databind.ObjectMapper;
  * <p>The write path is stream-based: TSV rows are parsed into entities and
  * handed to Storm's batch insert, which writes fixed-size JDBC batches while
  * the file is still streaming — one pass per file, no materialized entity
- * lists. Dataset files are downloaded once and cached locally; the import is
- * skipped entirely when movie data is already present.
+ * lists. The genre step is the exception: its data is in memory after the
+ * movie pass, so the genres and their junction rows are written as a single
+ * write set. Dataset files are downloaded once and cached locally; the import
+ * is skipped entirely when movie data is already present.
  */
 @Component
 public class ImdbDataImporter implements ApplicationRunner {
@@ -189,26 +191,28 @@ public class ImdbDataImporter implements ApplicationRunner {
         });
     }
 
-    /** Inserts the distinct genres and the movie-genre junction rows. */
+    /**
+     * Inserts the genres and the movie-genre junction rows with a single
+     * write set: the unsaved genres are discovered through the junction
+     * rows, inserted first, and their generated keys are propagated into
+     * the composite junction keys. The already-inserted movies only
+     * contribute their key values.
+     */
     private void importGenres(Map<String, Movie> moviesById, Map<String, List<String>> genreNamesByMovieId) {
         SortedSet<String> genreNames = genreNamesByMovieId.values().stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toCollection(TreeSet::new));
-        Map<String, Genre> genresByName = genreRepository
-                .insertAndFetch(genreNames.stream().map(Genre::new).toList())
-                .stream()
-                .collect(Collectors.toMap(Genre::name, genre -> genre));
-        int[] linkCount = {0};
-        Stream<MovieGenre> movieGenres = genreNamesByMovieId.entrySet().stream()
+        // One shared instance per name: key propagation correlates by instance identity.
+        Map<String, Genre> genresByName = genreNames.stream()
+                .collect(Collectors.toMap(Function.identity(), Genre::new));
+        List<MovieGenre> movieGenres = genreNamesByMovieId.entrySet().stream()
                 .flatMap(entry -> {
                     Movie movie = moviesById.get(entry.getKey());
-                    return entry.getValue().stream().map(name -> {
-                        linkCount[0]++;
-                        return new MovieGenre(movie, genresByName.get(name));
-                    });
-                });
-        movieGenreRepository.insert(movieGenres, INSERT_BATCH_SIZE);
-        logger.info("Imported {} genres and {} movie-genre links.", genresByName.size(), linkCount[0]);
+                    return entry.getValue().stream().map(name -> new MovieGenre(movie, genresByName.get(name)));
+                })
+                .toList();
+        movieGenreRepository.writeSet().insert(movieGenres);
+        logger.info("Imported {} genres and {} movie-genre links.", genresByName.size(), movieGenres.size());
     }
 
     /**
@@ -216,7 +220,7 @@ public class ImdbDataImporter implements ApplicationRunner {
      * the actually imported movie ids (not the full qualifying set) keeps
      * credits of non-movie titles out, which would violate FK constraints.
      * The rows are needed twice (person filtering, then the actual insert),
-     * so this is the one place the import materializes a list.
+     * so they are collected into a list.
      */
     private List<PrincipalRow> readPrincipalRows(Set<String> importedMovieIds) {
         return streamDataset("title.principals.tsv.gz", lines -> {
