@@ -27,12 +27,12 @@ public interface PrincipalRepository extends EntityRepository<Principal, Princip
     }
 
     /**
-     * A person's filmography sorted by rating, best first. Each entry
-     * carries the full credit (movie included) plus the rating value from
-     * an explicit join to the rating table.
+     * A person's filmography sorted by rating, best first. The credit holds
+     * the movie as a Ref, so the movie is selected alongside it: the join it
+     * needs is the one the rating join already asks for.
      */
     default List<FilmographyEntry> findFilmography(Person person) {
-        return select(FilmographyEntry.class, RAW."\{Principal.class}, \{Rating_.averageRating}")
+        return select(FilmographyEntry.class, RAW."\{Principal.class}, \{Movie.class}, \{Rating_.averageRating}")
                 .innerJoin(Rating.class).on(Movie.class)
                 .where(Principal_.person, person)
                 .orderByDescendingAny(Rating_.averageRating)

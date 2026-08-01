@@ -98,8 +98,9 @@ src/main/resources/
 Each part of the app demonstrates a Storm feature:
 
 - **Entities** (`model/`): immutable records with `@PK`, `@FK`, `@UK`, and
-  composite keys (`MovieGenre`, `Principal`). `MovieView` is a `Ref`-backed
-  entity; `MovieSummary` / `PersonSummary` are database-view-style projections
+  composite keys (`MovieGenre`, `Principal`). `MovieView` and `PersonGallery`
+  hold their foreign keys as `Ref`, so writing one never joins the referenced
+  graph; `MovieSummary` / `PersonSummary` are database-view-style projections
   that select a subset of columns.
 - **Repositories** (`repository/`): `EntityRepository` interfaces with default
   methods using the type-safe QueryBuilder and generated metamodel

@@ -37,7 +37,7 @@ public class PersonService {
             // A person can hold multiple credits in one movie; show each movie once.
             Set<String> seenMovieIds = new LinkedHashSet<>();
             List<FilmographyEntry> filmography = principalRepository.findFilmography(person).stream()
-                    .filter(entry -> seenMovieIds.add(entry.principal().movie().id()))
+                    .filter(entry -> seenMovieIds.add(entry.movie().id()))
                     .toList();
             return new PersonDetail(
                     person,

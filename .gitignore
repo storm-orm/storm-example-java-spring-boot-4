@@ -9,6 +9,7 @@
 # Build
 .gradle/
 build/
+bin/
 
 # IMDB dataset cache
 data/

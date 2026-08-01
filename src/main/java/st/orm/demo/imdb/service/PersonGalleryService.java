@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import st.orm.Ref;
 import st.orm.demo.imdb.model.Person;
 import st.orm.demo.imdb.model.PersonGallery;
 import st.orm.demo.imdb.model.Photo;
@@ -75,7 +76,7 @@ public class PersonGalleryService {
     public List<Photo> findGallery(String personId) {
         StoredGallery stored = readOnlyTransaction.execute(status ->
                 personRepository.findById(personId)
-                        .map(person -> new StoredGallery(person, personGalleryRepository.findById(person).orElse(null)))
+                        .map(person -> new StoredGallery(person, personGalleryRepository.findById(Ref.of(person)).orElse(null)))
                         .orElse(null));
         if (stored == null) {
             return null;
@@ -89,7 +90,7 @@ public class PersonGalleryService {
             return List.of();
         }
         transaction.executeWithoutResult(status ->
-                personGalleryRepository.upsert(new PersonGallery(stored.person(), photos, Instant.now())));
+                personGalleryRepository.upsert(new PersonGallery(Ref.of(stored.person()), photos, Instant.now())));
         return photos;
     }
 

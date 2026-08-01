@@ -6,6 +6,7 @@ import st.orm.FK;
 import st.orm.GenerationStrategy;
 import st.orm.PK;
 import st.orm.Persist;
+import st.orm.Ref;
 
 /**
  * A cast or crew credit linking a person to a movie. The IMDB billing order
@@ -17,7 +18,7 @@ import st.orm.Persist;
  */
 public record Principal(
         @PK(generation = GenerationStrategy.NONE) PrincipalPk id,
-        @FK @Persist(insertable = false, updatable = false) Movie movie,
+        @FK @Persist(insertable = false, updatable = false) Ref<Movie> movie,
         @FK Person person,
         @Persist(insertable = false, updatable = false) int ordering,
         String category,
@@ -25,6 +26,6 @@ public record Principal(
 ) implements Entity<PrincipalPk> {
 
     public Principal(Movie movie, int ordering, Person person, String category, String characters) {
-        this(new PrincipalPk(movie.id(), ordering), movie, person, ordering, category, characters);
+        this(new PrincipalPk(movie.id(), ordering), Ref.of(movie), person, ordering, category, characters);
     }
 }

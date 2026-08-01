@@ -33,7 +33,7 @@ class PrincipalRepositoryTest {
         assertEquals(List.of("Keanu Reeves", "Laurence Fishburne"),
                 cast.stream().map(principal -> principal.person().primaryName()).toList());
         assertEquals(List.of("Neo", "Morpheus"), cast.stream().map(Principal::characters).toList());
-        assertEquals("The Matrix", cast.get(0).movie().primaryTitle());
+        assertEquals("tt0133093", cast.get(0).movie().id());
     }
 
     @Test
@@ -51,7 +51,7 @@ class PrincipalRepositoryTest {
                         Map.entry("The Matrix Reloaded", new BigDecimal("7.2"))
                 ),
                 filmography.stream()
-                        .map(entry -> Map.entry(entry.principal().movie().primaryTitle(), entry.averageRating()))
+                        .map(entry -> Map.entry(entry.movie().primaryTitle(), entry.averageRating()))
                         .toList()
         );
     }

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import st.orm.Ref;
 import st.orm.demo.imdb.TestSupport;
 import st.orm.demo.imdb.model.Person;
 import st.orm.demo.imdb.model.PersonGallery;
@@ -21,7 +22,7 @@ class PersonGalleryRepositoryTest {
     void aGalleryRoundTripsItsPhotosThroughTheJsonColumn(ORMTemplate orm, SqlCapture capture) {
         PersonRepository personRepository = orm.repository(PersonRepository.class);
         PersonGalleryRepository galleryRepository = orm.repository(PersonGalleryRepository.class);
-        Person keanu = personRepository.getById("nm0000206");
+        Ref<Person> keanu = Ref.of(personRepository.getById("nm0000206"));
         List<Photo> photos = List.of(
                 new Photo("https://upload.wikimedia.org/keanu-1.jpg", "Keanu Reeves in 2019"),
                 new Photo("https://upload.wikimedia.org/keanu-2.jpg")
@@ -41,17 +42,15 @@ class PersonGalleryRepositoryTest {
         PersonGalleryRepository galleryRepository = orm.repository(PersonGalleryRepository.class);
         // Morgan Freeman is not touched by other tests in this class — the
         // @StormTest database is shared across the class's test methods.
-        Person morgan = personRepository.getById("nm0000151");
+        Ref<Person> morgan = Ref.of(personRepository.getById("nm0000151"));
 
-        // The service refreshes with upsert; on Storm <= 1.11.7 H2 cannot
-        // infer the parameter types of the MERGE that upsert generates, so
-        // the refresh is exercised as insert + update. Fixed upstream — switch
-        // both calls to upsert once the next Storm release is in.
-        galleryRepository.insert(new PersonGallery(
+        // The refresh runs the way the service does it: upsert writes the
+        // first gallery and replaces it on the second call.
+        galleryRepository.upsert(new PersonGallery(
                 morgan,
                 List.of(new Photo("https://upload.wikimedia.org/morgan-1.jpg")),
                 Instant.parse("2026-07-03T10:00:00Z")));
-        galleryRepository.update(new PersonGallery(
+        galleryRepository.upsert(new PersonGallery(
                 morgan,
                 List.of(
                         new Photo("https://upload.wikimedia.org/morgan-2.jpg", "Morgan Freeman in 2018"),
