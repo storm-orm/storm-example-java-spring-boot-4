@@ -35,7 +35,7 @@ public interface PrincipalRepository extends EntityRepository<Principal, Princip
         return select(FilmographyEntry.class, RAW."\{Principal.class}, \{Movie.class}, \{Rating_.averageRating}")
                 .innerJoin(Rating.class).on(Movie.class)
                 .where(Principal_.person, person)
-                .orderByDescendingAny(Rating_.averageRating)
+                .orderByDescending(Rating_.averageRating)
                 .getResultList();
     }
 
@@ -56,7 +56,8 @@ public interface PrincipalRepository extends EntityRepository<Principal, Princip
         return select(RelatedMovie.class, RAW."\{Movie.class}, COUNT(*)")
                 .where(predicate -> predicate.where(Principal_.person, IN, castMembers)
                         .and(predicate.where(Principal_.movie, NOT_EQUALS, excludedMovie)))
-                .groupByAny(Movie_.id, Movie_.primaryTitle, Movie_.originalTitle, Movie_.startYear, Movie_.runtimeMinutes)
+                .widen()
+                .groupBy(Movie_.id, Movie_.primaryTitle, Movie_.originalTitle, Movie_.startYear, Movie_.runtimeMinutes)
                 .orderByDescending(RAW."COUNT(*)")
                 .limit(limit)
                 .getResultList();
@@ -66,7 +67,8 @@ public interface PrincipalRepository extends EntityRepository<Principal, Princip
     default List<ProlificActor> findMostProlificActors(int limit) {
         return select(ProlificActor.class, RAW."\{Person.class}, COUNT(*)")
                 .where(Principal_.category, IN, List.of("actor", "actress"))
-                .groupByAny(Person_.id, Person_.primaryName, Person_.birthYear, Person_.deathYear)
+                .widen()
+                .groupBy(Person_.id, Person_.primaryName, Person_.birthYear, Person_.deathYear)
                 .orderByDescending(RAW."COUNT(*)")
                 .limit(limit)
                 .getResultList();

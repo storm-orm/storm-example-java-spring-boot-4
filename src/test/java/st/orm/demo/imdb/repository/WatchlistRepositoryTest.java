@@ -23,11 +23,11 @@ class WatchlistRepositoryTest {
     void theToggleCycleExistsInsertExistsRemoveWorksOnTheMovieKey(ORMTemplate orm, SqlCapture capture) {
         MovieRepository movieRepository = orm.repository(MovieRepository.class);
         WatchlistRepository watchlistRepository = orm.repository(WatchlistRepository.class);
-        // Pulp Fiction is not touched by other tests in this class — the
-        // @StormTest database is shared across the class's test methods.
+        // @StormTest rolls each test back, so the watchlist starts out empty
+        // however the class orders its methods.
         Movie pulpFiction = movieRepository.getById("tt0110912");
 
-        capture.run(() -> {
+        capture.record(() -> {
             assertFalse(watchlistRepository.existsById(pulpFiction));
 
             watchlistRepository.insert(new Watchlist(pulpFiction, Instant.now()));

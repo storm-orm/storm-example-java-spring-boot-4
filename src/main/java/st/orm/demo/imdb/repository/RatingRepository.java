@@ -4,6 +4,7 @@ import static st.orm.Operator.GREATER_THAN_OR_EQUAL;
 import static st.orm.Operator.IS_NOT_NULL;
 
 import java.util.List;
+import st.orm.Data;
 import st.orm.demo.imdb.model.Genre;
 import st.orm.demo.imdb.model.Movie;
 import st.orm.demo.imdb.model.MovieGenre;
@@ -36,17 +37,18 @@ public interface RatingRepository extends EntityRepository<Rating, Movie> {
      * builder is assembled.
      */
     default List<Rating> findTopMovies(Genre genre, TopMoviesSort sortBy, int minimumVoteCount, int limit) {
-        QueryBuilder<Rating, Rating, Movie> query = select()
-                .where(Rating_.voteCount, GREATER_THAN_OR_EQUAL, minimumVoteCount);
+        QueryBuilder<Data, Rating, Movie> query = select()
+                .where(Rating_.voteCount, GREATER_THAN_OR_EQUAL, minimumVoteCount)
+                .widen();
         if (genre != null) {
             query = query.innerJoin(MovieGenre.class).on(Movie.class)
-                    .whereAny(predicate -> predicate.whereAny(MovieGenre_.genre, genre));
+                    .where(MovieGenre_.genre, genre);
         }
         query = switch (sortBy) {
             case RATING -> query.orderByDescending(Rating_.averageRating);
             case YEAR -> query
-                    .whereAny(predicate -> predicate.whereAny(Movie_.startYear, IS_NOT_NULL))
-                    .orderByDescendingAny(Movie_.startYear, Rating_.averageRating);
+                    .where(Movie_.startYear, IS_NOT_NULL)
+                    .orderByDescending(Movie_.startYear, Rating_.averageRating);
         };
         return query.limit(limit).getResultList();
     }

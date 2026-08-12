@@ -41,7 +41,7 @@ public interface MovieSummaryRepository extends ProjectionRepository<MovieSummar
         return select()
                 .innerJoin(Rating.class).on(MovieSummary.class)
                 .where(RAW."LOWER(\{MovieSummary_.primaryTitle}) LIKE LOWER(\{pattern})")
-                .orderByDescendingAny(Rating_.voteCount)
+                .orderByDescending(Rating_.voteCount)
                 .limit(limit)
                 .getResultList();
     }
@@ -50,12 +50,15 @@ public interface MovieSummaryRepository extends ProjectionRepository<MovieSummar
      * All movies in a genre with keyset scrolling. The junction table has a
      * composite key and cannot be scrolled directly, so the scroll runs on
      * the movie's simple primary key with a JOIN through the junction table,
-     * resolved automatically against the projection by table.
+     * resolved automatically against the projection by table. The scroll key
+     * has to identify one row of the projection, which a key on the junction
+     * table would not.
      */
     default Window<MovieSummary> scrollByGenre(Genre genre, Scrollable<MovieSummary> scrollable) {
         return select()
                 .innerJoin(MovieGenre.class).on(MovieSummary.class)
-                .whereAny(predicate -> predicate.whereAny(MovieGenre_.genre, genre))
+                .where(MovieGenre_.genre, genre)
+                .narrow(MovieSummary.class)
                 .scroll(scrollable);
     }
 }

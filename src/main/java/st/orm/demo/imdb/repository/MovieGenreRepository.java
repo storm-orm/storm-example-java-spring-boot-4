@@ -19,7 +19,8 @@ public interface MovieGenreRepository extends EntityRepository<MovieGenre, Movie
     default List<Genre> findGenres(Movie movie) {
         return select(Genre.class)
                 .where(MovieGenre_.movie, movie)
-                .orderByAny(Genre_.name)
+                .widen()
+                .orderBy(Genre_.name)
                 .getResultList();
     }
 
@@ -31,7 +32,7 @@ public interface MovieGenreRepository extends EntityRepository<MovieGenre, Movie
     default List<GenreRatingStatistics> findGenreRatingStatistics(int minimumMovieCount, int limit) {
         return select(GenreRatingStatistics.class, RAW."\{Genre.class}, AVG(\{Rating_.averageRating}), COUNT(*)")
                 .innerJoin(Rating.class).on(Movie.class)
-                .groupByAny(Genre_.id, Genre_.name)
+                .groupBy(Genre_.id, Genre_.name)
                 .having(RAW."COUNT(*) >= \{minimumMovieCount}")
                 .orderByDescending(RAW."AVG(\{Rating_.averageRating})")
                 .limit(limit)
