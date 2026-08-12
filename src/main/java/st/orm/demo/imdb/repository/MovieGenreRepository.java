@@ -19,8 +19,7 @@ public interface MovieGenreRepository extends EntityRepository<MovieGenre, Movie
     default List<Genre> findGenres(Movie movie) {
         return select(Genre.class)
                 .where(MovieGenre_.movie, movie)
-                .widen()
-                .orderBy(Genre_.name)
+                .orderBy(MovieGenre_.genre.name)
                 .getResultList();
     }
 
