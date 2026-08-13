@@ -4,7 +4,6 @@ import static java.lang.StringTemplate.RAW;
 
 import java.util.List;
 import st.orm.demo.imdb.model.Genre;
-import st.orm.demo.imdb.model.Genre_;
 import st.orm.demo.imdb.model.Movie;
 import st.orm.demo.imdb.model.MovieGenre;
 import st.orm.demo.imdb.model.MovieGenrePk;
@@ -31,7 +30,7 @@ public interface MovieGenreRepository extends EntityRepository<MovieGenre, Movie
     default List<GenreRatingStatistics> findGenreRatingStatistics(int minimumMovieCount, int limit) {
         return select(GenreRatingStatistics.class, RAW."\{Genre.class}, AVG(\{Rating_.averageRating}), COUNT(*)")
                 .innerJoin(Rating.class).on(Movie.class)
-                .groupBy(Genre_.id, Genre_.name)
+                .groupBy(MovieGenre_.genre)
                 .having(RAW."COUNT(*) >= \{minimumMovieCount}")
                 .orderByDescending(RAW."AVG(\{Rating_.averageRating})")
                 .limit(limit)

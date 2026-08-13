@@ -28,7 +28,7 @@ public interface GenreRepository extends EntityRepository<Genre, Integer> {
     default List<GenreMovieCount> findGenresWithMovieCounts() {
         return select(GenreMovieCount.class, RAW."\{Genre.class}, COUNT(*)")
                 .innerJoin(MovieGenre.class).on(Genre.class)
-                .groupBy(Genre_.id, Genre_.name)
+                .groupBy(Genre_.id)
                 .orderBy(Genre_.name)
                 .getResultList();
     }

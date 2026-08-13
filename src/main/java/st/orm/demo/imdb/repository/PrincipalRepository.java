@@ -6,9 +6,7 @@ import static st.orm.Operator.NOT_EQUALS;
 
 import java.util.List;
 import st.orm.demo.imdb.model.Movie;
-import st.orm.demo.imdb.model.Movie_;
 import st.orm.demo.imdb.model.Person;
-import st.orm.demo.imdb.model.Person_;
 import st.orm.demo.imdb.model.Principal;
 import st.orm.demo.imdb.model.PrincipalPk;
 import st.orm.demo.imdb.model.Principal_;
@@ -56,8 +54,7 @@ public interface PrincipalRepository extends EntityRepository<Principal, Princip
         return select(RelatedMovie.class, RAW."\{Movie.class}, COUNT(*)")
                 .where(predicate -> predicate.where(Principal_.person, IN, castMembers)
                         .and(predicate.where(Principal_.movie, NOT_EQUALS, excludedMovie)))
-                .widen()
-                .groupBy(Movie_.id, Movie_.primaryTitle, Movie_.originalTitle, Movie_.startYear, Movie_.runtimeMinutes)
+                .groupBy(Principal_.movie)
                 .orderByDescending(RAW."COUNT(*)")
                 .limit(limit)
                 .getResultList();
@@ -67,8 +64,7 @@ public interface PrincipalRepository extends EntityRepository<Principal, Princip
     default List<ProlificActor> findMostProlificActors(int limit) {
         return select(ProlificActor.class, RAW."\{Person.class}, COUNT(*)")
                 .where(Principal_.category, IN, List.of("actor", "actress"))
-                .widen()
-                .groupBy(Person_.id, Person_.primaryName, Person_.birthYear, Person_.deathYear)
+                .groupBy(Principal_.person)
                 .orderByDescending(RAW."COUNT(*)")
                 .limit(limit)
                 .getResultList();
