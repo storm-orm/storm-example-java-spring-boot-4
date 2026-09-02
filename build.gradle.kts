@@ -6,7 +6,7 @@ plugins {
     // The Storm plugin imports the BOM, adds storm-java21 and storm-core, wires the
     // metamodel annotation processor, and enables the preview flags that Storm's Java
     // String Templates (JEP 430) require on compile, test, and run (BootRun included).
-    id("st.orm") version "1.13.1"
+    id("st.orm") version "1.14.0"
 }
 
 group = "st.orm.demo"
