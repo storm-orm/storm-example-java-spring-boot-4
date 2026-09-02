@@ -15,8 +15,7 @@ import st.orm.demo.imdb.repository.MovieRepository;
 import st.orm.demo.imdb.repository.WatchlistRepository;
 import java.util.List;
 import org.springframework.transaction.PlatformTransactionManager;
-import st.orm.spring.SpringConnectionProvider;
-import st.orm.spring.SpringTransactionTemplateProvider;
+import st.orm.spring.SpringOrmTemplate;
 import st.orm.template.ORMTemplate;
 import st.orm.template.Transactions;
 import st.orm.test.StormTest;
@@ -26,19 +25,16 @@ import st.orm.test.StormTest;
  * application: the transaction is the boundary — an exception rolls back
  * every write, and setRollbackOnly() discards writes without one.
  *
- * <p>Since Storm 1.13, joining Spring transactions is explicit composition
- * rather than classpath detection: the template is built with the Spring
- * connection and transaction providers, exactly as the Spring Boot starter
- * configures the application's own template.</p>
+ * <p>Joining Spring transactions is explicit composition rather than
+ * classpath detection: SpringOrmTemplate composes the template with the
+ * Spring connection and transaction integration, exactly as the Spring Boot
+ * starter configures the application's own template.</p>
  */
 @StormTest(scripts = {"/schema.sql", "/data.sql"})
 class TransactionTest {
 
     private static ORMTemplate springOrm(DataSource dataSource, PlatformTransactionManager transactionManager) {
-        return ORMTemplate.builder(dataSource)
-                .connectionProvider(new SpringConnectionProvider())
-                .transactionTemplateProvider(new SpringTransactionTemplateProvider(List.of(transactionManager)))
-                .build();
+        return SpringOrmTemplate.of(dataSource, () -> List.of(transactionManager));
     }
 
     @Test

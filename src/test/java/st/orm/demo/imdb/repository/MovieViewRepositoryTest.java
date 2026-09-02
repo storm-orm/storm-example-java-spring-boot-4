@@ -34,9 +34,8 @@ class MovieViewRepositoryTest {
     @Test
     void recordingAViewInsertsByIdWithoutLoadingTheMovie(ORMTemplate orm, SqlCapture capture) {
         MovieViewRepository movieViewRepository = orm.repository(MovieViewRepository.class);
-        capture.run(() ->
+        capture.record(() ->
                 movieViewRepository.insert(
-                        // Older than the seeded views so it never becomes the newest.
                         new MovieView(0L, Ref.of(Movie.class, "tt0110912"), Instant.parse("2026-06-30T00:00:00Z"))));
         TestSupport.printStatements(capture, "recordView");
         // A single INSERT: no SELECT is needed to record the view.

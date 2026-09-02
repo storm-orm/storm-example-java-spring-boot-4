@@ -28,7 +28,7 @@ class PersonGalleryRepositoryTest {
                 new Photo("https://upload.wikimedia.org/keanu-2.jpg")
         );
 
-        capture.run(() -> {
+        capture.record(() -> {
             galleryRepository.insert(new PersonGallery(keanu, photos, Instant.parse("2026-07-03T10:00:00Z")));
             assertEquals(photos, galleryRepository.getById(keanu).photos());
         });
@@ -40,8 +40,8 @@ class PersonGalleryRepositoryTest {
     void aRefreshedGalleryReplacesTheStoredPhotos(ORMTemplate orm) {
         PersonRepository personRepository = orm.repository(PersonRepository.class);
         PersonGalleryRepository galleryRepository = orm.repository(PersonGalleryRepository.class);
-        // Morgan Freeman is not touched by other tests in this class — the
-        // @StormTest database is shared across the class's test methods.
+        // @StormTest rolls each test back, so this person has no gallery yet
+        // however the class orders its methods.
         Ref<Person> morgan = Ref.of(personRepository.getById("nm0000151"));
 
         // The refresh runs the way the service does it: upsert writes the
