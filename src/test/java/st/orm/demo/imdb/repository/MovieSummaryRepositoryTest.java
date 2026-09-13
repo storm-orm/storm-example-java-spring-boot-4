@@ -48,7 +48,7 @@ class MovieSummaryRepositoryTest {
         assertNotNull(cursor);
 
         Window<MovieSummary> secondWindow = capture.execute(() ->
-                movieSummaryRepository.searchByTitle("matrix", Scrollable.fromCursor(MovieSummary_.id, cursor)));
+                movieSummaryRepository.searchByTitle("matrix", Scrollable.of(MovieSummary_.id, 1).from(cursor)));
         TestSupport.printStatements(capture, "searchByTitle-cursor");
         assertEquals(1, secondWindow.content().size());
         assertFalse(firstWindow.content().get(0).id().equals(secondWindow.content().get(0).id()));
@@ -100,7 +100,7 @@ class MovieSummaryRepositoryTest {
         assertTrue(firstWindow.hasNext());
 
         Window<MovieSummary> secondWindow = movieSummaryRepository.scrollByGenre(
-                drama, Scrollable.fromCursor(MovieSummary_.id, firstWindow.nextCursor()));
+                drama, Scrollable.of(MovieSummary_.id, 2).from(firstWindow.nextCursor()));
         // Three drama movies in total: 2 in the first window, 1 in the second.
         assertEquals(1, secondWindow.content().size());
     }

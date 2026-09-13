@@ -62,7 +62,7 @@ public class BrowseService {
                 return null;
             }
             Scrollable<MovieSummary> scrollable = cursor != null
-                    ? Scrollable.fromCursor(MovieSummary_.id, cursor)
+                    ? Scrollable.of(MovieSummary_.id, PAGE_SIZE).from(cursor)
                     : Scrollable.of(MovieSummary_.id, PAGE_SIZE);
             return movieSummaryRepository.scrollByGenre(genre, scrollable);
             });

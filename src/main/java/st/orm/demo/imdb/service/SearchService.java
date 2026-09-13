@@ -52,7 +52,7 @@ public class SearchService {
      */
     public Window<MovieSummary> scrollMovies(String query, String cursor) {
         Scrollable<MovieSummary> scrollable = cursor != null
-                ? Scrollable.fromCursor(MovieSummary_.id, cursor)
+                ? Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE).from(cursor)
                 : Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE);
         return movieSummaryRepository.searchByTitle(query, scrollable);
     }
@@ -60,7 +60,7 @@ public class SearchService {
     /** The next window of person results — same cursor contract as {@link #scrollMovies}. */
     public Window<PersonSummary> scrollPersons(String query, String cursor) {
         Scrollable<PersonSummary> scrollable = cursor != null
-                ? Scrollable.fromCursor(PersonSummary_.id, cursor)
+                ? Scrollable.of(PersonSummary_.id, PERSON_PAGE_SIZE).from(cursor)
                 : Scrollable.of(PersonSummary_.id, PERSON_PAGE_SIZE);
         return personSummaryRepository.searchByName(query, scrollable);
     }
