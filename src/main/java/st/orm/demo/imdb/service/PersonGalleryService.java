@@ -6,11 +6,16 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -37,12 +42,16 @@ public class PersonGalleryService {
     /** Galleries are only useful in small doses; keep the first dozen photos. */
     private static final int MAX_GALLERY_PHOTOS = 12;
 
+    /** Galleries refreshed per window: one read and one write per this many people. */
+    private static final int REFRESH_WINDOW_SIZE = 50;
+
     private static final Logger logger = LoggerFactory.getLogger(PersonGalleryService.class);
 
     private final PersonRepository personRepository;
     private final PersonGalleryRepository personGalleryRepository;
     private final WikipediaSummaryService wikipediaSummaryService;
     private final ObjectMapper objectMapper;
+    private final Duration maxAge;
     private final TransactionTemplate readOnlyTransaction;
     private final TransactionTemplate transaction;
 
@@ -54,11 +63,13 @@ public class PersonGalleryService {
                                 PersonGalleryRepository personGalleryRepository,
                                 WikipediaSummaryService wikipediaSummaryService,
                                 ObjectMapper objectMapper,
-                                PlatformTransactionManager transactionManager) {
+                                PlatformTransactionManager transactionManager,
+                                @Value("${imdb.gallery-refresh.max-age}") Duration maxAge) {
         this.personRepository = personRepository;
         this.personGalleryRepository = personGalleryRepository;
         this.wikipediaSummaryService = wikipediaSummaryService;
         this.objectMapper = objectMapper;
+        this.maxAge = maxAge;
         this.readOnlyTransaction = new TransactionTemplate(transactionManager);
         this.readOnlyTransaction.setReadOnly(true);
         this.transaction = new TransactionTemplate(transactionManager);
@@ -92,6 +103,41 @@ public class PersonGalleryService {
         transaction.executeWithoutResult(status ->
                 personGalleryRepository.upsert(new PersonGallery(Ref.of(stored.person()), photos, Instant.now())));
         return photos;
+    }
+
+    /**
+     * Re-fetches the galleries that have not been refreshed for the configured
+     * maximum age, in windows over the key. Each window is one statement that
+     * has closed before the loop sees it, so between windows the connection is
+     * free: the loop resolves the persons, calls Wikimedia holding nothing, and
+     * writes the whole window back in one upsert. Reading the same galleries as
+     * a result stream would hold the connection until the last row and refuse
+     * every statement the loop makes.
+     */
+    @Scheduled(
+            initialDelayString = "${imdb.gallery-refresh.initial-delay}",
+            fixedDelayString = "${imdb.gallery-refresh.interval}")
+    public void refreshStaleGalleries() {
+        Instant cutoff = Instant.now().minus(maxAge);
+        AtomicInteger refreshed = new AtomicInteger();
+        personGalleryRepository.findStaleGalleries(cutoff, REFRESH_WINDOW_SIZE).forEach(window -> {
+            List<Person> persons = personRepository.findAllByRef(
+                    window.content().stream().map(PersonGallery::person).toList());
+            List<PersonGallery> galleries = persons.stream()
+                    .map(person -> {
+                        List<Photo> photos = fetchPhotos(person);
+                        return photos == null ? null : new PersonGallery(Ref.of(person), photos, Instant.now());
+                    })
+                    .filter(Objects::nonNull)
+                    .toList();
+            if (!galleries.isEmpty()) {
+                transaction.executeWithoutResult(status -> personGalleryRepository.upsert(galleries));
+                refreshed.addAndGet(galleries.size());
+            }
+        });
+        if (refreshed.get() > 0) {
+            logger.info("Refreshed {} stale photo galleries.", refreshed.get());
+        }
     }
 
     private List<Photo> fetchPhotos(Person person) {

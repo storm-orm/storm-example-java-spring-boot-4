@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import st.orm.Ref;
+import st.orm.Window;
 import st.orm.demo.imdb.TestSupport;
 import st.orm.demo.imdb.model.Person;
 import st.orm.demo.imdb.model.PersonGallery;
@@ -34,6 +35,34 @@ class PersonGalleryRepositoryTest {
         });
         TestSupport.printStatements(capture, "galleryRoundTrip");
         assertEquals(1, capture.count(Operation.INSERT));
+    }
+
+    @Test
+    void staleGalleriesAreReadInWindowsOfTheirOwnStatement(ORMTemplate orm, SqlCapture capture) {
+        PersonRepository personRepository = orm.repository(PersonRepository.class);
+        PersonGalleryRepository galleryRepository = orm.repository(PersonGalleryRepository.class);
+        Instant cutoff = Instant.parse("2026-08-01T00:00:00Z");
+        List<String> stalePersonIds = List.of("nm0000206", "nm0000401", "nm0000151", "nm0000209", "nm0000237");
+        galleryRepository.insert(stalePersonIds.stream()
+                .map(personId -> new PersonGallery(
+                        Ref.of(personRepository.getById(personId)),
+                        List.of(new Photo("https://upload.wikimedia.org/" + personId + ".jpg")),
+                        Instant.parse("2026-07-03T10:00:00Z")))
+                .toList());
+        galleryRepository.insert(new PersonGallery(
+                Ref.of(personRepository.getById("nm0000199")),
+                List.of(new Photo("https://upload.wikimedia.org/nm0000199.jpg")),
+                Instant.parse("2026-09-01T10:00:00Z")));
+
+        List<Window<PersonGallery>> windows = capture.execute(() ->
+                galleryRepository.findStaleGalleries(cutoff, 2).toList());
+        TestSupport.printStatements(capture, "findStaleGalleries");
+
+        // Three windows over the five stale galleries, each read by one statement
+        // of its own; the fresh gallery is not in any of them.
+        assertEquals(3, windows.size());
+        assertEquals(3, capture.count(Operation.SELECT));
+        assertEquals(List.of(2, 2, 1), windows.stream().map(window -> window.content().size()).toList());
     }
 
     @Test
