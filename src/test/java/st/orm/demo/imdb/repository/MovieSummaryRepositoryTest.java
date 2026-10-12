@@ -38,6 +38,21 @@ class MovieSummaryRepositoryTest {
     }
 
     @Test
+    void searchByTitleMatchesEveryWordOfTheQueryInAnyOrder(ORMTemplate orm) {
+        MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
+        assertEquals(List.of("The Matrix Reloaded"), titles(movieSummaryRepository, "reloaded MATRIX"));
+        assertEquals(List.of("The Matrix", "The Matrix Reloaded"), titles(movieSummaryRepository, "\"the matrix\""));
+        assertEquals(List.of(), titles(movieSummaryRepository, "matrix godfather"));
+        // % and _ match themselves rather than acting as wildcards.
+        assertEquals(List.of(), titles(movieSummaryRepository, "%"));
+    }
+
+    private static List<String> titles(MovieSummaryRepository movieSummaryRepository, String query) {
+        return movieSummaryRepository.searchByTitle(query, Scrollable.of(MovieSummary_.id, 10))
+                .content().stream().map(MovieSummary::primaryTitle).sorted().toList();
+    }
+
+    @Test
     void searchByTitleScrollsThroughWindowsWithACursor(ORMTemplate orm, SqlCapture capture) {
         MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
 

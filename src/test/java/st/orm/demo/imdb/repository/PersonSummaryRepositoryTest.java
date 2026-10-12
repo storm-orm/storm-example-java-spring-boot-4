@@ -41,4 +41,16 @@ class PersonSummaryRepositoryTest {
         assertEquals(List.of("Keanu Reeves", "Morgan Freeman"),
                 suggestions.stream().map(PersonSummary::primaryName).toList());
     }
+
+    @Test
+    void searchByNameMatchesEveryWordOfTheQueryInAnyOrder(ORMTemplate orm) {
+        PersonSummaryRepository personSummaryRepository = orm.repository(PersonSummaryRepository.class);
+        assertEquals(List.of("Keanu Reeves"), names(personSummaryRepository, "reeves keanu"));
+        assertEquals(List.of(), names(personSummaryRepository, "keanu freeman"));
+    }
+
+    private static List<String> names(PersonSummaryRepository personSummaryRepository, String query) {
+        return personSummaryRepository.searchByName(query, Scrollable.of(PersonSummary_.id, 10))
+                .content().stream().map(PersonSummary::primaryName).toList();
+    }
 }

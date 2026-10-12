@@ -1,7 +1,5 @@
 package st.orm.demo.imdb.repository;
 
-import static java.lang.StringTemplate.RAW;
-
 import java.util.List;
 import st.orm.Scrollable;
 import st.orm.Window;
@@ -17,16 +15,18 @@ import st.orm.repository.ProjectionRepository;
 public interface MovieSummaryRepository extends ProjectionRepository<MovieSummary, String> {
 
     /**
-     * Case-insensitive title search with keyset scrolling. The projection
-     * keeps the SELECT to the three columns the result grid actually shows.
+     * Title search with keyset scrolling. Every word of the query must occur
+     * in the title, ignoring case, so "matrix reloaded" finds The Matrix
+     * Reloaded; a quoted phrase counts as one word, and % or _ match
+     * themselves. The projection keeps the SELECT to the three columns the
+     * result grid actually shows.
      * The returned Window offers both navigation modes: typed
      * next()/previous() Scrollables for server-side code, and opaque
      * nextCursor()/previousCursor() strings for clients.
      */
     default Window<MovieSummary> searchByTitle(String query, Scrollable<MovieSummary> scrollable) {
-        String pattern = "%" + query + "%";
         return select()
-                .where(RAW."LOWER(\{MovieSummary_.primaryTitle}) LIKE LOWER(\{pattern})")
+                .where(it -> it.search(query, MovieSummary_.primaryTitle))
                 .scroll(scrollable);
     }
 
@@ -37,10 +37,9 @@ public interface MovieSummaryRepository extends ProjectionRepository<MovieSummar
      * automatically because both map the same table.
      */
     default List<MovieSummary> findTitleSuggestions(String query, int limit) {
-        String pattern = "%" + query + "%";
         return select()
                 .innerJoin(Rating.class).on(MovieSummary.class)
-                .where(RAW."LOWER(\{MovieSummary_.primaryTitle}) LIKE LOWER(\{pattern})")
+                .where(it -> it.search(query, MovieSummary_.primaryTitle))
                 .orderByDescending(Rating_.voteCount)
                 .limit(limit)
                 .getResultList();
