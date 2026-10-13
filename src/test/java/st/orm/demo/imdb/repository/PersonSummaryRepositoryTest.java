@@ -38,7 +38,7 @@ class PersonSummaryRepositoryTest {
         List<PersonSummary> suggestions = capture.execute(() ->
                 personSummaryRepository.findNameSuggestions("an", 10));
         TestSupport.printStatements(capture, "findNameSuggestions");
-        assertEquals(List.of("Keanu Reeves", "Morgan Freeman"),
+        assertEquals(List.of("Keanu Reeves", "Lana Wachowski", "Morgan Freeman"),
                 suggestions.stream().map(PersonSummary::primaryName).toList());
     }
 

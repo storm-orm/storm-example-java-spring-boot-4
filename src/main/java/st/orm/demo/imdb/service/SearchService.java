@@ -38,7 +38,7 @@ public class SearchService {
     public SearchResults search(String query) {
         return transaction(READ_ONLY, tx -> {
             return new SearchResults(
-                    movieSummaryRepository.searchByTitle(query, Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE)),
+                    movieSummaryRepository.searchMovies(query, Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE)),
                     personSummaryRepository.searchByName(query, Scrollable.of(PersonSummary_.id, PERSON_PAGE_SIZE))
             );
             });
@@ -54,7 +54,7 @@ public class SearchService {
         Scrollable<MovieSummary> scrollable = cursor != null
                 ? Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE).from(cursor)
                 : Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE);
-        return movieSummaryRepository.searchByTitle(query, scrollable);
+        return movieSummaryRepository.searchMovies(query, scrollable);
     }
 
     /** The next window of person results — same cursor contract as {@link #scrollMovies}. */
@@ -69,7 +69,7 @@ public class SearchService {
     public Suggestions findSuggestions(String query) {
         return transaction(READ_ONLY, tx -> {
             return new Suggestions(
-                    movieSummaryRepository.findTitleSuggestions(query, MOVIE_SUGGESTION_LIMIT),
+                    movieSummaryRepository.findMovieSuggestions(query, MOVIE_SUGGESTION_LIMIT),
                     personSummaryRepository.findNameSuggestions(query, PERSON_SUGGESTION_LIMIT)
             );
             });
