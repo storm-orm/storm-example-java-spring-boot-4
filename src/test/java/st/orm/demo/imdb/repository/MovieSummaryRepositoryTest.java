@@ -21,15 +21,14 @@ import st.orm.test.StormTest;
 class MovieSummaryRepositoryTest {
 
     @Test
-    void searchByTitleSelectsOnlyTheProjectedColumns(ORMTemplate orm, SqlCapture capture) {
+    void searchMoviesSelectsOnlyTheProjectedColumns(ORMTemplate orm, SqlCapture capture) {
         MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
         Window<MovieSummary> window = capture.execute(() ->
-                movieSummaryRepository.searchByTitle("matrix", Scrollable.of(MovieSummary_.id, 10)));
-        TestSupport.printStatements(capture, "searchByTitle");
+                movieSummaryRepository.searchMovies("matrix", Scrollable.of(MovieSummary_.id, 10)));
+        TestSupport.printStatements(capture, "searchMovies");
         assertEquals(1, capture.count(Operation.SELECT));
         String statement = capture.statements().get(0).statement();
-        // The projection narrows the SELECT: no columns beyond id, title, year.
-        assertFalse(statement.contains("original_title"));
+        // The projection narrows the SELECT: no columns beyond id, titles, year.
         assertFalse(statement.contains("runtime_minutes"));
         assertEquals(
                 List.of("The Matrix", "The Matrix Reloaded"),
@@ -38,18 +37,51 @@ class MovieSummaryRepositoryTest {
     }
 
     @Test
-    void searchByTitleScrollsThroughWindowsWithACursor(ORMTemplate orm, SqlCapture capture) {
+    void searchMoviesMatchesEveryWordOfTheQueryInAnyOrder(ORMTemplate orm) {
+        MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
+        assertEquals(List.of("The Matrix Reloaded"), titles(movieSummaryRepository, "reloaded MATRIX"));
+        assertEquals(List.of("The Matrix", "The Matrix Reloaded"), titles(movieSummaryRepository, "\"the matrix\""));
+        assertEquals(List.of(), titles(movieSummaryRepository, "matrix godfather"));
+        // % and _ match themselves rather than acting as wildcards.
+        assertEquals(List.of(), titles(movieSummaryRepository, "%"));
+    }
+
+    @Test
+    void searchMoviesMatchesTheOriginalTitle(ORMTemplate orm) {
+        MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
+        assertEquals(List.of("Amélie"), titles(movieSummaryRepository, "fabuleux destin"));
+        assertEquals(List.of("Amélie"), titles(movieSummaryRepository, "amélie poulain"));
+        assertEquals(List.of(), titles(movieSummaryRepository, "fabuleux matrix"));
+    }
+
+    @Test
+    void searchMoviesMatchesTheNamesOfThePeopleCredited(ORMTemplate orm) {
+        MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
+        assertEquals(List.of("The Matrix", "The Matrix Reloaded"), titles(movieSummaryRepository, "keanu"));
+        assertEquals(List.of("The Matrix", "The Matrix Reloaded"), titles(movieSummaryRepository, "matrix keanu"));
+        assertEquals(List.of("The Matrix Reloaded"), titles(movieSummaryRepository, "reloaded fishburne"));
+        assertEquals(List.of("The Shawshank Redemption"), titles(movieSummaryRepository, "freeman"));
+        assertEquals(List.of(), titles(movieSummaryRepository, "keanu godfather"));
+    }
+
+    private static List<String> titles(MovieSummaryRepository movieSummaryRepository, String query) {
+        return movieSummaryRepository.searchMovies(query, Scrollable.of(MovieSummary_.id, 10))
+                .content().stream().map(MovieSummary::primaryTitle).sorted().toList();
+    }
+
+    @Test
+    void searchMoviesScrollsThroughWindowsWithACursor(ORMTemplate orm, SqlCapture capture) {
         MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
 
-        Window<MovieSummary> firstWindow = movieSummaryRepository.searchByTitle("matrix", Scrollable.of(MovieSummary_.id, 1));
+        Window<MovieSummary> firstWindow = movieSummaryRepository.searchMovies("matrix", Scrollable.of(MovieSummary_.id, 1));
         assertEquals(1, firstWindow.content().size());
         assertTrue(firstWindow.hasNext());
         String cursor = firstWindow.nextCursor();
         assertNotNull(cursor);
 
         Window<MovieSummary> secondWindow = capture.execute(() ->
-                movieSummaryRepository.searchByTitle("matrix", Scrollable.of(MovieSummary_.id, 1).from(cursor)));
-        TestSupport.printStatements(capture, "searchByTitle-cursor");
+                movieSummaryRepository.searchMovies("matrix", Scrollable.of(MovieSummary_.id, 1).from(cursor)));
+        TestSupport.printStatements(capture, "searchMovies-cursor");
         assertEquals(1, secondWindow.content().size());
         assertFalse(firstWindow.content().get(0).id().equals(secondWindow.content().get(0).id()));
     }
@@ -58,7 +90,7 @@ class MovieSummaryRepositoryTest {
     void scrollingServerSideUsesWindowNextWithoutAnyCursor(ORMTemplate orm, SqlCapture capture) {
         MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
 
-        Window<MovieSummary> firstWindow = movieSummaryRepository.searchByTitle("matrix", Scrollable.of(MovieSummary_.id, 1));
+        Window<MovieSummary> firstWindow = movieSummaryRepository.searchMovies("matrix", Scrollable.of(MovieSummary_.id, 1));
         assertTrue(firstWindow.hasNext());
 
         // Server-side navigation never touches the cursor string: next() is
@@ -66,18 +98,18 @@ class MovieSummaryRepositoryTest {
         // cursor carries the position alone, for crossing the client-server
         // boundary where the request states the rest.
         Window<MovieSummary> secondWindow = capture.execute(() ->
-                movieSummaryRepository.searchByTitle("matrix", firstWindow.next()));
-        TestSupport.printStatements(capture, "searchByTitle-next");
+                movieSummaryRepository.searchMovies("matrix", firstWindow.next()));
+        TestSupport.printStatements(capture, "searchMovies-next");
         assertEquals(1, secondWindow.content().size());
         assertFalse(firstWindow.content().get(0).id().equals(secondWindow.content().get(0).id()));
     }
 
     @Test
-    void findTitleSuggestionsRanksByVoteCount(ORMTemplate orm, SqlCapture capture) {
+    void findMovieSuggestionsRanksByVoteCount(ORMTemplate orm, SqlCapture capture) {
         MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
         List<MovieSummary> suggestions = capture.execute(() ->
-                movieSummaryRepository.findTitleSuggestions("matrix", 5));
-        TestSupport.printStatements(capture, "findTitleSuggestions");
+                movieSummaryRepository.findMovieSuggestions("matrix", 5));
+        TestSupport.printStatements(capture, "findMovieSuggestions");
         assertEquals(1, capture.count(Operation.SELECT));
         assertTrue(capture.statements().get(0).statement().contains("rating"));
         // The Matrix (2M votes) must rank above The Matrix Reloaded (600k).
