@@ -21,7 +21,7 @@ class MovieRepositoryTest {
         TestSupport.printStatements(capture, "countMoviesPerDecade");
         assertTrue(capture.statements().get(0).statement().contains("GROUP BY"));
         assertEquals(
-                List.of(Map.entry(1970, 1L), Map.entry(1990, 3L), Map.entry(2000, 1L)),
+                List.of(Map.entry(1970, 1L), Map.entry(1990, 3L), Map.entry(2000, 2L)),
                 decades.stream().map(decade -> Map.entry(decade.decade(), decade.movieCount())).toList()
         );
     }

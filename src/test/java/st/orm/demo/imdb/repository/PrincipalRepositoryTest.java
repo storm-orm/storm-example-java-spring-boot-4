@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,9 +30,9 @@ class PrincipalRepositoryTest {
         TestSupport.printStatements(capture, "findCast");
         // One query loads the credits including their movie and person graph.
         assertEquals(1, capture.count(Operation.SELECT));
-        assertEquals(List.of("Keanu Reeves", "Laurence Fishburne", "Lana Wachowski"),
+        assertEquals(List.of("Keanu Reeves", "Laurence Fishburne"),
                 cast.stream().map(principal -> principal.person().primaryName()).toList());
-        assertEquals(Arrays.asList("Neo", "Morpheus", null), cast.stream().map(Principal::characters).toList());
+        assertEquals(List.of("Neo", "Morpheus"), cast.stream().map(Principal::characters).toList());
         assertEquals("tt0133093", cast.get(0).movie().id());
     }
 

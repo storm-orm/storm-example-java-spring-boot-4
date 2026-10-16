@@ -28,8 +28,7 @@ class MovieSummaryRepositoryTest {
         TestSupport.printStatements(capture, "searchMovies");
         assertEquals(1, capture.count(Operation.SELECT));
         String statement = capture.statements().get(0).statement();
-        // The projection narrows the SELECT: no columns beyond id, title, year.
-        assertFalse(statement.contains("original_title"));
+        // The projection narrows the SELECT: no columns beyond id, titles, year.
         assertFalse(statement.contains("runtime_minutes"));
         assertEquals(
                 List.of("The Matrix", "The Matrix Reloaded"),
@@ -48,10 +47,17 @@ class MovieSummaryRepositoryTest {
     }
 
     @Test
-    void searchMoviesMatchesTheNamesOfTheDirectorAndActors(ORMTemplate orm) {
+    void searchMoviesMatchesTheOriginalTitle(ORMTemplate orm) {
+        MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
+        assertEquals(List.of("Amélie"), titles(movieSummaryRepository, "fabuleux destin"));
+        assertEquals(List.of("Amélie"), titles(movieSummaryRepository, "amélie poulain"));
+        assertEquals(List.of(), titles(movieSummaryRepository, "fabuleux matrix"));
+    }
+
+    @Test
+    void searchMoviesMatchesTheNamesOfThePeopleCredited(ORMTemplate orm) {
         MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
         assertEquals(List.of("The Matrix", "The Matrix Reloaded"), titles(movieSummaryRepository, "keanu"));
-        assertEquals(List.of("The Matrix", "The Matrix Reloaded"), titles(movieSummaryRepository, "wachowski"));
         assertEquals(List.of("The Matrix", "The Matrix Reloaded"), titles(movieSummaryRepository, "matrix keanu"));
         assertEquals(List.of("The Matrix Reloaded"), titles(movieSummaryRepository, "reloaded fishburne"));
         assertEquals(List.of("The Shawshank Redemption"), titles(movieSummaryRepository, "freeman"));
