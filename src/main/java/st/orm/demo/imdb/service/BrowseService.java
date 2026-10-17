@@ -10,7 +10,6 @@ import st.orm.Window;
 import st.orm.demo.imdb.model.Genre;
 import st.orm.demo.imdb.model.MovieGenre_;
 import st.orm.demo.imdb.model.MovieSummary;
-import st.orm.demo.imdb.model.MovieSummary_;
 import st.orm.demo.imdb.repository.GenreRepository;
 import st.orm.demo.imdb.repository.MovieGenreRepository;
 import st.orm.demo.imdb.repository.MovieSummaryRepository;
@@ -35,7 +34,10 @@ public class BrowseService {
         this.movieSummaryRepository = movieSummaryRepository;
     }
 
-    /** The browse page: genre, count, and first window in one read-only transaction. */
+    /**
+     * The browse page: genre, count, and first window in one read-only
+     * transaction. The genre lists its most voted movies first.
+     */
     public BrowseView browseGenre(String genreName) {
         return transaction(READ_ONLY, tx -> {
             Genre genre = genreRepository.findByName(genreName).orElse(null);
@@ -45,7 +47,7 @@ public class BrowseService {
             return new BrowseView(
                     genre,
                     movieGenreRepository.countBy(MovieGenre_.genre, genre),
-                    movieSummaryRepository.scrollByGenre(genre, Scrollable.of(MovieSummary_.id, PAGE_SIZE))
+                    movieSummaryRepository.scrollByGenre(genre, MovieSummaryRepository.mostVotedFirst(PAGE_SIZE))
             );
             });
     }
@@ -62,8 +64,8 @@ public class BrowseService {
                 return null;
             }
             Scrollable<MovieSummary> scrollable = cursor != null
-                    ? Scrollable.of(MovieSummary_.id, PAGE_SIZE).from(cursor)
-                    : Scrollable.of(MovieSummary_.id, PAGE_SIZE);
+                    ? MovieSummaryRepository.mostVotedFirst(PAGE_SIZE).from(cursor)
+                    : MovieSummaryRepository.mostVotedFirst(PAGE_SIZE);
             return movieSummaryRepository.scrollByGenre(genre, scrollable);
             });
     }

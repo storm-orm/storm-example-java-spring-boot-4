@@ -51,6 +51,8 @@ class MovieSummaryRepositoryTest {
         MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
         assertEquals(List.of("Amélie"), titles(movieSummaryRepository, "fabuleux destin"));
         assertEquals(List.of("Amélie"), titles(movieSummaryRepository, "amélie poulain"));
+        assertEquals(List.of("Amélie"), titles(movieSummaryRepository, "amelie poulain"));
+        assertEquals(List.of("Amélie"), titles(movieSummaryRepository, "AMELIE"));
         assertEquals(List.of(), titles(movieSummaryRepository, "fabuleux matrix"));
     }
 
@@ -118,23 +120,26 @@ class MovieSummaryRepositoryTest {
     }
 
     @Test
-    void scrollByGenreJoinsTheJunctionTableAndScrollsOnTheMovieKey(ORMTemplate orm, SqlCapture capture) {
+    void scrollByGenreScrollsAGenreMostVotedFirst(ORMTemplate orm, SqlCapture capture) {
         GenreRepository genreRepository = orm.repository(GenreRepository.class);
         MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
         var drama = genreRepository.findByName("Drama").orElseThrow();
 
         capture.clear();
         Window<MovieSummary> firstWindow = capture.execute(() ->
-                movieSummaryRepository.scrollByGenre(drama, Scrollable.of(MovieSummary_.id, 2)));
+                movieSummaryRepository.scrollByGenre(drama, MovieSummaryRepository.mostVotedFirst(2)));
         TestSupport.printStatements(capture, "scrollByGenre");
         assertEquals(1, capture.count(Operation.SELECT));
         assertTrue(capture.statements().get(0).statement().contains("movie_genre"));
-        assertEquals(2, firstWindow.content().size());
+        // Shawshank (2.9M votes) and Pulp Fiction (2.2M) before The Godfather
+        // (2.0M), the reverse of their ids.
+        assertEquals(List.of("The Shawshank Redemption", "Pulp Fiction"),
+                firstWindow.content().stream().map(MovieSummary::primaryTitle).toList());
         assertTrue(firstWindow.hasNext());
 
         Window<MovieSummary> secondWindow = movieSummaryRepository.scrollByGenre(
-                drama, Scrollable.of(MovieSummary_.id, 2).from(firstWindow.nextCursor()));
-        // Three drama movies in total: 2 in the first window, 1 in the second.
-        assertEquals(1, secondWindow.content().size());
+                drama, MovieSummaryRepository.mostVotedFirst(2).from(firstWindow.nextCursor()));
+        assertEquals(List.of("The Godfather"),
+                secondWindow.content().stream().map(MovieSummary::primaryTitle).toList());
     }
 }

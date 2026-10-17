@@ -1,7 +1,10 @@
 package st.orm.demo.imdb.service;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import st.orm.demo.imdb.model.Movie;
@@ -61,8 +64,8 @@ public class MovieService {
         }
         movieViewRepository.insert(new MovieView(movie, Instant.now()));
 
-        List<Principal> cast = principalRepository.findCast(movie);
-        List<Person> castMembers = cast.stream().map(Principal::person).distinct().toList();
+        List<CastCredit> cast = castCredits(principalRepository.findCast(movie));
+        List<Person> castMembers = cast.stream().map(CastCredit::person).toList();
         List<RelatedMovie> relatedMovies = castMembers.isEmpty()
                 ? List.of()
                 : principalRepository.findMoviesSharingCast(castMembers, movie, RELATED_MOVIES_LIMIT);
@@ -74,5 +77,22 @@ public class MovieService {
                 relatedMovies,
                 watchlistRepository.existsById(movie)
         );
+    }
+
+    /**
+     * Folds the credits into one per person, at the person's first billing
+     * position, with each distinct role once.
+     */
+    private static List<CastCredit> castCredits(List<Principal> credits) {
+        Map<String, List<Principal>> creditsByPerson = credits.stream()
+                .collect(Collectors.groupingBy(credit -> credit.person().id(), LinkedHashMap::new, Collectors.toList()));
+        return creditsByPerson.values().stream()
+                .map(personCredits -> new CastCredit(
+                        personCredits.getFirst().person(),
+                        personCredits.stream()
+                                .map(credit -> credit.characters() != null ? credit.characters() : credit.category())
+                                .distinct()
+                                .toList()))
+                .toList();
     }
 }
