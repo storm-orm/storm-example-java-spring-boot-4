@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import st.orm.Scrollable;
 import st.orm.Window;
 import st.orm.demo.imdb.model.MovieSummary;
-import st.orm.demo.imdb.model.MovieSummary_;
 import st.orm.demo.imdb.model.PersonSummary;
 import st.orm.demo.imdb.model.PersonSummary_;
 import st.orm.demo.imdb.repository.MovieSummaryRepository;
@@ -38,7 +37,7 @@ public class SearchService {
     public SearchResults search(String query) {
         return transaction(READ_ONLY, tx -> {
             return new SearchResults(
-                    movieSummaryRepository.searchMovies(query, Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE)),
+                    movieSummaryRepository.searchMovies(query, MovieSummaryRepository.mostVotedFirst(MOVIE_PAGE_SIZE)),
                     personSummaryRepository.searchByName(query, Scrollable.of(PersonSummary_.id, PERSON_PAGE_SIZE))
             );
             });
@@ -52,8 +51,8 @@ public class SearchService {
      */
     public Window<MovieSummary> scrollMovies(String query, String cursor) {
         Scrollable<MovieSummary> scrollable = cursor != null
-                ? Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE).from(cursor)
-                : Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE);
+                ? MovieSummaryRepository.mostVotedFirst(MOVIE_PAGE_SIZE).from(cursor)
+                : MovieSummaryRepository.mostVotedFirst(MOVIE_PAGE_SIZE);
         return movieSummaryRepository.searchMovies(query, scrollable);
     }
 

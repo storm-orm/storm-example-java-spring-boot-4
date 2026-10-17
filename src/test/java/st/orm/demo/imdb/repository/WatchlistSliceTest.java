@@ -3,6 +3,7 @@ package st.orm.demo.imdb.repository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static st.orm.test.TestDatabase.POSTGRESQL;
 
 import java.time.Instant;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -21,15 +22,16 @@ import st.orm.spring.boot.test.DataStormTest;
  * The {@code @DataStormTest} slice: the counterpart of {@code @DataJpaTest} for Storm. Unlike the
  * {@code @StormTest}-based tests in this package, which test data logic without a Spring context, the
  * slice sees what production code sees — repositories as Spring beans, the Spring-managed transaction,
- * and SQL failures translated to Spring's DataAccessException hierarchy. The properties attribute points
- * the slice at an in-memory database. Flyway creates the schema exactly as in production, the fixture
- * loads once through @Sql, and each test's own writes roll back afterwards.
+ * and SQL failures translated to Spring's DataAccessException hierarchy. The database attribute runs the
+ * slice on PostgreSQL in a Testcontainers-managed container, the dialect the migration is written for.
+ * Flyway creates the schema exactly as in production, the fixture loads once through @Sql, and each
+ * test's own writes roll back afterwards.
  */
 @TestMethodOrder(OrderAnnotation.class)
-// The slice replaces the PostgreSQL DataSource with an embedded database on Boot 3 and 4 alike.
-// Flyway (included in the slice) creates the schema, as in production; the schema.sql used by the
-// @StormTest classes stays out of the way.
-@DataStormTest(properties = "spring.sql.init.mode=never")
+// The slice points the DataSource at a fresh database in the PostgreSQL container on Boot 3 and 4
+// alike. Flyway (included in the slice) creates the schema, as in production; the schema.sql used by
+// the @StormTest classes stays out of the way.
+@DataStormTest(database = POSTGRESQL, properties = "spring.sql.init.mode=never")
 // The fixture loads once per context (committed): genre ids are identity-generated, and identity
 // sequences do not roll back, so a per-method fixture would drift away from its foreign keys.
 @Sql(scripts = "/data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)

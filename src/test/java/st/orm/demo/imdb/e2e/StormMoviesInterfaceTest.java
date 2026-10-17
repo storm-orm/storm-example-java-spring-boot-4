@@ -108,6 +108,61 @@ class StormMoviesInterfaceTest {
         assertThat(page.locator(".page-title")).containsText(Pattern.compile("keanu", Pattern.CASE_INSENSITIVE));
     }
 
+    @Test
+    void autoCompleteIsBrowsableWithTheArrowKeysAndOpensTheHighlightedSuggestionWithEnter() {
+        page.navigate(baseUrl + "/");
+        Locator searchInput = page.locator(".navbar [data-search-input]");
+        searchInput.pressSequentially("matrix", new Locator.PressSequentiallyOptions().setDelay(60.0));
+
+        Locator suggestions = page.locator(".navbar .suggestion");
+        assertThat(suggestions.first()).isVisible();
+        // New results start without a highlight.
+        assertThat(page.locator(".navbar .suggestion.active")).hasCount(0);
+
+        Pattern active = Pattern.compile("\\bactive\\b");
+        searchInput.press("ArrowDown");
+        assertThat(suggestions.nth(0)).hasClass(active);
+        assertThat(searchInput).hasAttribute("aria-activedescendant", suggestions.nth(0).getAttribute("id"));
+        searchInput.press("ArrowDown");
+        assertThat(suggestions.nth(1)).hasClass(active);
+        assertThat(page.locator(".navbar .suggestion.active")).hasCount(1);
+        searchInput.press("ArrowUp");
+        assertThat(suggestions.nth(0)).hasClass(active);
+        // Up from the first suggestion wraps to the last.
+        searchInput.press("ArrowUp");
+        assertThat(suggestions.last()).hasClass(active);
+        searchInput.press("ArrowDown");
+        assertThat(suggestions.nth(0)).hasClass(active);
+
+        String href = suggestions.nth(0).getAttribute("href");
+        searchInput.press("Enter");
+        page.waitForURL(baseUrl + href);
+        assertThat(page.locator(".movie-title")).containsText(Pattern.compile("matrix", Pattern.CASE_INSENSITIVE));
+    }
+
+    @Test
+    void theFindShortcutFocusesTheSearchBox() {
+        String shortcut = System.getProperty("os.name").toLowerCase().contains("mac") ? "Meta+f" : "Control+f";
+        page.navigate(baseUrl + "/");
+        page.keyboard().press(shortcut);
+        assertThat(page.locator(".search-hero [data-search-input]")).isFocused();
+
+        page.navigate(baseUrl + "/top");
+        page.keyboard().press(shortcut);
+        assertThat(page.locator(".navbar [data-search-input]")).isFocused();
+    }
+
+    @Test
+    void enterWithoutAHighlightedSuggestionOpensTheSearchPage() {
+        page.navigate(baseUrl + "/");
+        Locator searchInput = page.locator(".navbar [data-search-input]");
+        searchInput.pressSequentially("matrix", new Locator.PressSequentiallyOptions().setDelay(60.0));
+        assertThat(page.locator(".navbar .suggestion").first()).isVisible();
+
+        searchInput.press("Enter");
+        page.waitForURL(Pattern.compile(".*/search\\?query=matrix"));
+    }
+
     /* ── Search results + infinite scroll ─────────────────────────── */
 
     @Test
@@ -328,6 +383,43 @@ class StormMoviesInterfaceTest {
                     .setFullPage(false)
                     // Fast-forward CSS animations so screenshots show settled state.
                     .setAnimations(ScreenshotAnimations.DISABLED));
+        }
+    }
+
+    @Test
+    void everyPageFitsAPhoneScreenAndTheSearchBoxServesIt() {
+        // A phone widens its layout to the widest content, so a page that does not fit is shown
+        // zoomed out rather than overflowing: the layout width, not the scroll width, tells.
+        BrowserContext phone = browser.newContext(new Browser.NewContextOptions()
+                .setViewportSize(390, 844).setIsMobile(true).setHasTouch(true));
+        try {
+            Page mobile = phone.newPage();
+            Path screenshots = Paths.get("build/e2e-screenshots");
+            List<Map.Entry<String, String>> pages = List.of(
+                    Map.entry("/", "home"), Map.entry("/top", "top"), Map.entry("/watchlist", "watchlist"),
+                    Map.entry("/statistics", "statistics"), Map.entry("/search?query=matrix", "search"),
+                    Map.entry("/movie/tt0133093", "movie"), Map.entry("/person/nm0000206", "person"),
+                    Map.entry("/browse/Drama", "browse")
+            );
+            for (Map.Entry<String, String> entry : pages) {
+                mobile.navigate(baseUrl + entry.getKey());
+                Number width = (Number) mobile.evaluate("window.innerWidth");
+                assertEquals(390, width.intValue(), entry.getKey() + " lays out wider than the phone screen");
+                mobile.screenshot(new Page.ScreenshotOptions()
+                        .setPath(screenshots.resolve("mobile-" + entry.getValue() + ".png"))
+                        .setAnimations(ScreenshotAnimations.DISABLED));
+            }
+            // The navbar search box spans the screen, and its suggestions with it.
+            mobile.navigate(baseUrl + "/top");
+            Locator input = mobile.locator(".navbar [data-search-input]");
+            assertThat(input).isVisible();
+            input.fill("matrix");
+            Locator suggestions = mobile.locator(".navbar [data-search-suggestions]");
+            assertThat(suggestions.locator(".suggestion").first()).isVisible();
+            double boxWidth = suggestions.boundingBox().width;
+            assertTrue(boxWidth >= 340, "Suggestions are " + boxWidth + "px wide on a 390px screen");
+        } finally {
+            phone.close();
         }
     }
 
