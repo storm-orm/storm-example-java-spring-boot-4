@@ -80,7 +80,7 @@ internet access.
 
 ```
 src/main/java/st/orm/demo/imdb/
-├── model/          Storm entities (@PK, @FK) and projections, as records
+├── model/          Storm entities (@PK, @FK), as records
 ├── repository/     EntityRepository interfaces with QueryBuilder queries
 ├── service/        Business logic in Storm transaction(...) blocks,
 │                   plus the streaming IMDB importer
@@ -100,8 +100,8 @@ Each part of the app demonstrates a Storm feature:
 - **Entities** (`model/`): immutable records with `@PK`, `@FK`, `@UK`, and
   composite keys (`MovieGenre`, `Principal`). `MovieView` and `PersonGallery`
   hold their foreign keys as `Ref`, so writing one never joins the referenced
-  graph; `MovieSummary` / `PersonSummary` are database-view-style projections
-  that select a subset of columns.
+  graph. Each table has one entity, and the list pages, search and
+  suggestions read it too.
 - **Repositories** (`repository/`): `EntityRepository` interfaces with default
   methods using the type-safe QueryBuilder and generated metamodel
   (`Movie_.startYear`, `Principal_.person`). Aggregations return plain records;
@@ -153,7 +153,10 @@ Storm generates. `EntitySchemaValidationTest` runs on PostgreSQL instead, throug
 `@StormTest(database = POSTGRESQL)`: Storm starts a Testcontainers-managed
 PostgreSQL once per test run and applies the Flyway migration to it, so the
 entities are validated against the schema and dialect the application deploys
-with. That one test needs Docker, like running the application does.
+with. `WatchlistSliceTest`, the `@DataStormTest` slice, runs on that container too,
+through `@DataStormTest(database = POSTGRESQL)`, because the migration it applies
+is written for PostgreSQL. These two tests need Docker, like running the
+application does.
 
 The Playwright interface tests run against a live application:
 

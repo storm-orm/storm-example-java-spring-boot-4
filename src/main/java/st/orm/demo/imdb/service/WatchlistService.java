@@ -5,6 +5,7 @@ import static st.orm.template.Transactions.transaction;
 import java.time.Instant;
 import org.springframework.stereotype.Service;
 import st.orm.Page;
+import st.orm.Ref;
 import st.orm.demo.imdb.model.Movie;
 import st.orm.demo.imdb.model.Watchlist;
 import st.orm.demo.imdb.repository.MovieRepository;
@@ -30,9 +31,9 @@ public class WatchlistService {
      * <p>The exists/insert/remove cycle runs in one transaction; in Spring Boot
      * the transaction delegates to Spring's transaction manager.
      */
-    public boolean toggle(String movieId) {
+    public boolean toggle(Ref<Movie> movieRef) {
         return transaction(tx -> {
-            Movie movie = movieRepository.getById(movieId);
+            Movie movie = movieRepository.getByRef(movieRef);
             if (watchlistRepository.existsById(movie)) {
                 watchlistRepository.removeById(movie);
                 return false;

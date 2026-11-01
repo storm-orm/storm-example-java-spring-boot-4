@@ -4,8 +4,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import st.orm.Window;
-import st.orm.demo.imdb.model.MovieSummary;
-import st.orm.demo.imdb.model.PersonSummary;
+import st.orm.demo.imdb.model.Movie;
+import st.orm.demo.imdb.model.Person;
 import st.orm.demo.imdb.service.SearchService;
 import st.orm.demo.imdb.service.Suggestions;
 
@@ -30,14 +30,14 @@ public class SearchApiController {
     @GetMapping("/api/search/movies")
     public SearchWindow<MovieSearchItem> movies(@RequestParam String query,
                                                 @RequestParam(required = false) String cursor) {
-        Window<MovieSummary> window = searchService.scrollMovies(query, cursor);
+        Window<Movie> window = searchService.scrollMovies(query, cursor);
         return new SearchWindow<>(window.content().stream().map(MovieSearchItem::of).toList(), window.nextCursor());
     }
 
     @GetMapping("/api/search/persons")
     public SearchWindow<PersonSearchItem> persons(@RequestParam String query,
                                                   @RequestParam(required = false) String cursor) {
-        Window<PersonSummary> window = searchService.scrollPersons(query, cursor);
+        Window<Person> window = searchService.scrollPersons(query, cursor);
         return new SearchWindow<>(window.content().stream().map(PersonSearchItem::of).toList(), window.nextCursor());
     }
 }

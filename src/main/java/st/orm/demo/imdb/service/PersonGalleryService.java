@@ -84,10 +84,10 @@ public class PersonGalleryService {
      * fetch failures are not stored; a later request simply tries again.
      * Returns null for unknown persons.
      */
-    public List<Photo> findGallery(String personId) {
+    public List<Photo> findGallery(Ref<Person> personRef) {
         StoredGallery stored = readOnlyTransaction.execute(status ->
-                personRepository.findById(personId)
-                        .map(person -> new StoredGallery(person, personGalleryRepository.findById(Ref.of(person)).orElse(null)))
+                personRepository.findByRef(personRef)
+                        .map(person -> new StoredGallery(person, personGalleryRepository.findById(personRef).orElse(null)))
                         .orElse(null));
         if (stored == null) {
             return null;
@@ -143,7 +143,7 @@ public class PersonGalleryService {
     private List<Photo> fetchPhotos(Person person) {
         // The summary lookup resolves the person to a canonical article
         // title — it already skips disambiguation pages.
-        ExternalSummary article = wikipediaSummaryService.findPersonSummary(person.id());
+        ExternalSummary article = wikipediaSummaryService.findPersonSummary(Ref.of(person));
         if (article == null) {
             return null;
         }

@@ -6,6 +6,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.server.ResponseStatusException;
+import st.orm.Ref;
+import st.orm.demo.imdb.model.Person;
 import st.orm.demo.imdb.service.PersonDetail;
 import st.orm.demo.imdb.service.PersonService;
 
@@ -20,7 +22,7 @@ public class PersonController {
 
     @GetMapping("/person/{personId}")
     public String personDetail(@PathVariable String personId, Model model) {
-        PersonDetail detail = personService.findPersonDetail(personId);
+        PersonDetail detail = personService.findPersonDetail(Ref.of(Person.class, personId));
         if (detail == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown person: " + personId);
         }

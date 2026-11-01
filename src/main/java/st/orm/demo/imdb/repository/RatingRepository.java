@@ -32,16 +32,17 @@ public interface RatingRepository extends EntityRepository<Rating, Movie> {
 
     /**
      * The top movies page: optionally filtered by genre, sorted by rating
-     * or release year. Demonstrates query composition — the genre join and
+     * or release year. Demonstrates query composition — the genre filter and
      * the sort order are decided by plain Java conditionals as the query
-     * builder is assembled.
+     * builder is assembled. The genre is a semi-join on the junction table:
+     * it keeps the movies of the genre without adding rows.
      */
     default List<Rating> findTopMovies(Genre genre, TopMoviesSort sortBy, int minimumVoteCount, int limit) {
         QueryBuilder<Data, Rating, Movie> query = select()
                 .where(Rating_.voteCount, GREATER_THAN_OR_EQUAL, minimumVoteCount)
                 .widen();
         if (genre != null) {
-            query = query.innerJoin(MovieGenre.class).on(Movie.class)
+            query = query.semiJoin(MovieGenre.class).on(Movie.class)
                     .where(MovieGenre_.genre, genre);
         }
         query = switch (sortBy) {

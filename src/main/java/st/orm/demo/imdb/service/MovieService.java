@@ -1,9 +1,13 @@
 package st.orm.demo.imdb.service;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import st.orm.Ref;
 import st.orm.demo.imdb.model.Movie;
 import st.orm.demo.imdb.model.MovieView;
 import st.orm.demo.imdb.model.Person;
@@ -54,15 +58,15 @@ public class MovieService {
      * transaction, and a programmatic block inside it would join as well.</p>
      */
     @Transactional
-    public MovieDetail viewMovie(String movieId) {
-        Movie movie = movieRepository.findById(movieId).orElse(null);
+    public MovieDetail viewMovie(Ref<Movie> movieRef) {
+        Movie movie = movieRepository.findByRef(movieRef).orElse(null);
         if (movie == null) {
             return null;
         }
         movieViewRepository.insert(new MovieView(movie, Instant.now()));
 
-        List<Principal> cast = principalRepository.findCast(movie);
-        List<Person> castMembers = cast.stream().map(Principal::person).distinct().toList();
+        List<CastCredit> cast = castCredits(principalRepository.findCast(movie));
+        List<Person> castMembers = cast.stream().map(CastCredit::person).toList();
         List<RelatedMovie> relatedMovies = castMembers.isEmpty()
                 ? List.of()
                 : principalRepository.findMoviesSharingCast(castMembers, movie, RELATED_MOVIES_LIMIT);
@@ -74,5 +78,25 @@ public class MovieService {
                 relatedMovies,
                 watchlistRepository.existsById(movie)
         );
+    }
+
+    /**
+     * Folds the credits into one per person, at the person's first billing
+     * position, with each distinct role once. The fold runs here rather than
+     * in the query: a card holds a list of roles, which one row per person
+     * cannot give without a JSON aggregation, and a movie has a few dozen
+     * credits at most, read in billing order for the page anyway.
+     */
+    private static List<CastCredit> castCredits(List<Principal> credits) {
+        Map<Ref<Person>, List<Principal>> creditsByPerson = credits.stream()
+                .collect(Collectors.groupingBy(credit -> Ref.of(credit.person()), LinkedHashMap::new, Collectors.toList()));
+        return creditsByPerson.values().stream()
+                .map(personCredits -> new CastCredit(
+                        personCredits.getFirst().person(),
+                        personCredits.stream()
+                                .map(credit -> credit.characters() != null ? credit.characters() : credit.category())
+                                .distinct()
+                                .toList()))
+                .toList();
     }
 }

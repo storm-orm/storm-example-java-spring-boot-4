@@ -12,7 +12,9 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
+import st.orm.Ref;
 import st.orm.demo.imdb.model.Movie;
+import st.orm.demo.imdb.model.Person;
 import st.orm.demo.imdb.repository.MovieRepository;
 import st.orm.demo.imdb.repository.PersonRepository;
 import tools.jackson.databind.JsonNode;
@@ -32,7 +34,9 @@ public class WikipediaSummaryService {
     private final PersonRepository personRepository;
     private final ObjectMapper objectMapper;
 
-    private final ConcurrentHashMap<String, Optional<ExternalSummary>> summariesByKey = new ConcurrentHashMap<>();
+    // Keyed by the row's ref: a ref compares by type and key, so a movie and a
+    // person never share an entry.
+    private final ConcurrentHashMap<Ref<?>, Optional<ExternalSummary>> summariesByRef = new ConcurrentHashMap<>();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -46,9 +50,9 @@ public class WikipediaSummaryService {
         this.objectMapper = objectMapper;
     }
 
-    public ExternalSummary findMovieSummary(String movieId) {
-        return summariesByKey.computeIfAbsent("movie:" + movieId, key -> {
-            Movie movie = movieRepository.findById(movieId).orElse(null);
+    public ExternalSummary findMovieSummary(Ref<Movie> movieRef) {
+        return summariesByRef.computeIfAbsent(movieRef, key -> {
+            Movie movie = movieRepository.findByRef(movieRef).orElse(null);
             if (movie == null) {
                 return Optional.empty();
             }
@@ -62,9 +66,9 @@ public class WikipediaSummaryService {
         }).orElse(null);
     }
 
-    public ExternalSummary findPersonSummary(String personId) {
-        return summariesByKey.computeIfAbsent("person:" + personId, key ->
-                personRepository.findById(personId)
+    public ExternalSummary findPersonSummary(Ref<Person> personRef) {
+        return summariesByRef.computeIfAbsent(personRef, key ->
+                personRepository.findByRef(personRef)
                         .map(person -> Optional.ofNullable(findFirstSummary(
                                 List.of(person.primaryName(), person.primaryName() + " (actor)"))))
                         .orElseGet(Optional::empty)

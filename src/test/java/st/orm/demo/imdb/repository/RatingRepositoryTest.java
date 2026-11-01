@@ -36,12 +36,12 @@ class RatingRepositoryTest {
         TestSupport.printStatements(capture, "findTopMovies-all");
         // No genre filter: the junction table must not be joined.
         assertTrue(!capture.statements().get(0).statement().contains("movie_genre"));
-        assertEquals(5, topMovies.size());
+        assertEquals(6, topMovies.size());
         assertEquals("The Shawshank Redemption", topMovies.get(0).movie().primaryTitle());
     }
 
     @Test
-    void findTopMoviesWithGenreJoinsTheJunctionTable(ORMTemplate orm, SqlCapture capture) {
+    void findTopMoviesWithGenreFiltersByTheJunctionTable(ORMTemplate orm, SqlCapture capture) {
         GenreRepository genreRepository = orm.repository(GenreRepository.class);
         RatingRepository ratingRepository = orm.repository(RatingRepository.class);
         Genre action = genreRepository.findByName("Action").orElseThrow();

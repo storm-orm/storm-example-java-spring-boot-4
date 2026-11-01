@@ -7,12 +7,11 @@ import st.orm.TransactionOptions;
 import org.springframework.stereotype.Service;
 import st.orm.Scrollable;
 import st.orm.Window;
-import st.orm.demo.imdb.model.MovieSummary;
-import st.orm.demo.imdb.model.MovieSummary_;
-import st.orm.demo.imdb.model.PersonSummary;
-import st.orm.demo.imdb.model.PersonSummary_;
-import st.orm.demo.imdb.repository.MovieSummaryRepository;
-import st.orm.demo.imdb.repository.PersonSummaryRepository;
+import st.orm.demo.imdb.model.Movie;
+import st.orm.demo.imdb.model.Person;
+import st.orm.demo.imdb.model.Person_;
+import st.orm.demo.imdb.repository.MovieRepository;
+import st.orm.demo.imdb.repository.PersonRepository;
 
 @Service
 public class SearchService {
@@ -25,21 +24,21 @@ public class SearchService {
     private static final int MOVIE_SUGGESTION_LIMIT = 6;
     private static final int PERSON_SUGGESTION_LIMIT = 4;
 
-    private final MovieSummaryRepository movieSummaryRepository;
-    private final PersonSummaryRepository personSummaryRepository;
+    private final MovieRepository movieRepository;
+    private final PersonRepository personRepository;
 
-    public SearchService(MovieSummaryRepository movieSummaryRepository,
-                         PersonSummaryRepository personSummaryRepository) {
-        this.movieSummaryRepository = movieSummaryRepository;
-        this.personSummaryRepository = personSummaryRepository;
+    public SearchService(MovieRepository movieRepository,
+                         PersonRepository personRepository) {
+        this.movieRepository = movieRepository;
+        this.personRepository = personRepository;
     }
 
     /** The search page: both first windows in one read-only transaction. */
     public SearchResults search(String query) {
         return transaction(READ_ONLY, tx -> {
             return new SearchResults(
-                    movieSummaryRepository.searchMovies(query, Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE)),
-                    personSummaryRepository.searchByName(query, Scrollable.of(PersonSummary_.id, PERSON_PAGE_SIZE))
+                    movieRepository.searchMovies(query, MovieRepository.mostVotedFirst(MOVIE_PAGE_SIZE)),
+                    personRepository.searchByName(query, Scrollable.of(Person_.id, PERSON_PAGE_SIZE))
             );
             });
     }
@@ -50,27 +49,27 @@ public class SearchService {
      * value resumes exactly where the client left off. Purely server-side
      * navigation would use window.next() instead — no cursor involved.
      */
-    public Window<MovieSummary> scrollMovies(String query, String cursor) {
-        Scrollable<MovieSummary> scrollable = cursor != null
-                ? Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE).from(cursor)
-                : Scrollable.of(MovieSummary_.id, MOVIE_PAGE_SIZE);
-        return movieSummaryRepository.searchMovies(query, scrollable);
+    public Window<Movie> scrollMovies(String query, String cursor) {
+        Scrollable<Movie> scrollable = cursor != null
+                ? MovieRepository.mostVotedFirst(MOVIE_PAGE_SIZE).from(cursor)
+                : MovieRepository.mostVotedFirst(MOVIE_PAGE_SIZE);
+        return movieRepository.searchMovies(query, scrollable);
     }
 
     /** The next window of person results — same cursor contract as {@link #scrollMovies}. */
-    public Window<PersonSummary> scrollPersons(String query, String cursor) {
-        Scrollable<PersonSummary> scrollable = cursor != null
-                ? Scrollable.of(PersonSummary_.id, PERSON_PAGE_SIZE).from(cursor)
-                : Scrollable.of(PersonSummary_.id, PERSON_PAGE_SIZE);
-        return personSummaryRepository.searchByName(query, scrollable);
+    public Window<Person> scrollPersons(String query, String cursor) {
+        Scrollable<Person> scrollable = cursor != null
+                ? Scrollable.of(Person_.id, PERSON_PAGE_SIZE).from(cursor)
+                : Scrollable.of(Person_.id, PERSON_PAGE_SIZE);
+        return personRepository.searchByName(query, scrollable);
     }
 
     /** Auto-complete: movie and person suggestions in one read-only transaction. */
     public Suggestions findSuggestions(String query) {
         return transaction(READ_ONLY, tx -> {
             return new Suggestions(
-                    movieSummaryRepository.findMovieSuggestions(query, MOVIE_SUGGESTION_LIMIT),
-                    personSummaryRepository.findNameSuggestions(query, PERSON_SUGGESTION_LIMIT)
+                    movieRepository.findMovieSuggestions(query, MOVIE_SUGGESTION_LIMIT),
+                    personRepository.findNameSuggestions(query, PERSON_SUGGESTION_LIMIT)
             );
             });
     }
