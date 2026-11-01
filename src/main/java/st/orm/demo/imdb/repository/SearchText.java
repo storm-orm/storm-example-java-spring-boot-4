@@ -23,7 +23,7 @@ final class SearchText {
     private SearchText() {
     }
 
-    /** The column without its accents, as the searches match it: {@code folded(MovieSummary_.primaryTitle)}. */
+    /** The column without its accents, as the searches match it: {@code folded(Movie_.primaryTitle)}. */
     static <T extends Data> Metamodel<T, String> folded(Metamodel<T, String> path) {
         return FOLD_ACCENTS.apply(path);
     }

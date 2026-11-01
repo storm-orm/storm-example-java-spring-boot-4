@@ -8,11 +8,11 @@ import org.springframework.stereotype.Service;
 import st.orm.Scrollable;
 import st.orm.Window;
 import st.orm.demo.imdb.model.Genre;
+import st.orm.demo.imdb.model.Movie;
 import st.orm.demo.imdb.model.MovieGenre_;
-import st.orm.demo.imdb.model.MovieSummary;
 import st.orm.demo.imdb.repository.GenreRepository;
 import st.orm.demo.imdb.repository.MovieGenreRepository;
-import st.orm.demo.imdb.repository.MovieSummaryRepository;
+import st.orm.demo.imdb.repository.MovieRepository;
 
 @Service
 public class BrowseService {
@@ -24,14 +24,14 @@ public class BrowseService {
 
     private final GenreRepository genreRepository;
     private final MovieGenreRepository movieGenreRepository;
-    private final MovieSummaryRepository movieSummaryRepository;
+    private final MovieRepository movieRepository;
 
     public BrowseService(GenreRepository genreRepository,
                          MovieGenreRepository movieGenreRepository,
-                         MovieSummaryRepository movieSummaryRepository) {
+                         MovieRepository movieRepository) {
         this.genreRepository = genreRepository;
         this.movieGenreRepository = movieGenreRepository;
-        this.movieSummaryRepository = movieSummaryRepository;
+        this.movieRepository = movieRepository;
     }
 
     /**
@@ -47,7 +47,7 @@ public class BrowseService {
             return new BrowseView(
                     genre,
                     movieGenreRepository.countBy(MovieGenre_.genre, genre),
-                    movieSummaryRepository.scrollByGenre(genre, MovieSummaryRepository.mostVotedFirst(PAGE_SIZE))
+                    movieRepository.scrollByGenre(genre, MovieRepository.mostVotedFirst(PAGE_SIZE))
             );
             });
     }
@@ -57,16 +57,16 @@ public class BrowseService {
      * cursor is the opaque string from the previous response (null requests
      * the first window) — the client echoes it back unchanged.
      */
-    public Window<MovieSummary> scrollGenre(String genreName, String cursor) {
+    public Window<Movie> scrollGenre(String genreName, String cursor) {
         return transaction(READ_ONLY, tx -> {
             Genre genre = genreRepository.findByName(genreName).orElse(null);
             if (genre == null) {
                 return null;
             }
-            Scrollable<MovieSummary> scrollable = cursor != null
-                    ? MovieSummaryRepository.mostVotedFirst(PAGE_SIZE).from(cursor)
-                    : MovieSummaryRepository.mostVotedFirst(PAGE_SIZE);
-            return movieSummaryRepository.scrollByGenre(genre, scrollable);
+            Scrollable<Movie> scrollable = cursor != null
+                    ? MovieRepository.mostVotedFirst(PAGE_SIZE).from(cursor)
+                    : MovieRepository.mostVotedFirst(PAGE_SIZE);
+            return movieRepository.scrollByGenre(genre, scrollable);
             });
     }
 }
