@@ -41,7 +41,7 @@ class RatingRepositoryTest {
     }
 
     @Test
-    void findTopMoviesWithGenreJoinsTheJunctionTable(ORMTemplate orm, SqlCapture capture) {
+    void findTopMoviesWithGenreFiltersByTheJunctionTable(ORMTemplate orm, SqlCapture capture) {
         GenreRepository genreRepository = orm.repository(GenreRepository.class);
         RatingRepository ratingRepository = orm.repository(RatingRepository.class);
         Genre action = genreRepository.findByName("Action").orElseThrow();

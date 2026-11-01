@@ -44,6 +44,7 @@ public class StatisticsService {
     public StatisticsView buildStatisticsView() {
         return transaction(READ_ONLY, tx -> {
             List<DecadeMovieCount> decades = movieRepository.countMoviesPerDecade();
+            // The decades are in memory for the chart; the largest count scales its bars.
             long maxDecadeCount = decades.stream().mapToLong(DecadeMovieCount::movieCount).max().orElse(1L);
             return new StatisticsView(
                     decades,

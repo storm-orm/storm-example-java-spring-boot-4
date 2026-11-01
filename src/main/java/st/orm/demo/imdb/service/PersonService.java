@@ -8,6 +8,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
+import st.orm.Ref;
+import st.orm.demo.imdb.model.Movie;
 import st.orm.demo.imdb.model.Person;
 import st.orm.demo.imdb.repository.FilmographyEntry;
 import st.orm.demo.imdb.repository.PersonRepository;
@@ -28,16 +30,18 @@ public class PersonService {
     }
 
     /** The person page: filmography and statistics in one read-only transaction. */
-    public PersonDetail findPersonDetail(String personId) {
+    public PersonDetail findPersonDetail(Ref<Person> personRef) {
         return transaction(READ_ONLY, tx -> {
-            Person person = personRepository.findById(personId).orElse(null);
+            Person person = personRepository.findByRef(personRef).orElse(null);
             if (person == null) {
                 return null;
             }
             // A person can hold multiple credits in one movie; show each movie once.
-            Set<String> seenMovieIds = new LinkedHashSet<>();
+            // The query returns every credit: one row per movie would have to pick
+            // one of its credits, which no grouping can, and the rows are few.
+            Set<Ref<Movie>> seenMovies = new LinkedHashSet<>();
             List<FilmographyEntry> filmography = principalRepository.findFilmography(person).stream()
-                    .filter(entry -> seenMovieIds.add(entry.movie().id()))
+                    .filter(entry -> seenMovies.add(Ref.of(entry.movie())))
                     .toList();
             return new PersonDetail(
                     person,

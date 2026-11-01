@@ -6,6 +6,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.server.ResponseStatusException;
+import st.orm.Ref;
+import st.orm.demo.imdb.model.Movie;
 import st.orm.demo.imdb.service.MovieDetail;
 import st.orm.demo.imdb.service.MovieService;
 
@@ -20,7 +22,7 @@ public class MovieController {
 
     @GetMapping("/movie/{movieId}")
     public String movieDetail(@PathVariable String movieId, Model model) {
-        MovieDetail detail = movieService.viewMovie(movieId);
+        MovieDetail detail = movieService.viewMovie(Ref.of(Movie.class, movieId));
         if (detail == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown movie: " + movieId);
         }

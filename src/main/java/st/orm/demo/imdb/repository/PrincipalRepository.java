@@ -71,6 +71,8 @@ public interface PrincipalRepository extends EntityRepository<Principal, Princip
      * to half a million acting credits from a partial index (V1) alone and
      * joins nothing. Only the people who made the list are then loaded, in
      * one query; joining every person before counting took four times as long.
+     * That query returns them in no set order, so each is looked up by its ref
+     * to keep the order of the counts.
      */
     default List<ProlificActor> findMostProlificActors(int limit) {
         List<ActingCreditCount> counts = select(ActingCreditCount.class, RAW."\{Principal_.person}, COUNT(*)")

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import st.orm.Ref;
 import st.orm.demo.imdb.model.Movie;
 import st.orm.demo.imdb.model.MovieView;
 import st.orm.demo.imdb.model.Person;
@@ -57,8 +58,8 @@ public class MovieService {
      * transaction, and a programmatic block inside it would join as well.</p>
      */
     @Transactional
-    public MovieDetail viewMovie(String movieId) {
-        Movie movie = movieRepository.findById(movieId).orElse(null);
+    public MovieDetail viewMovie(Ref<Movie> movieRef) {
+        Movie movie = movieRepository.findByRef(movieRef).orElse(null);
         if (movie == null) {
             return null;
         }
@@ -81,11 +82,14 @@ public class MovieService {
 
     /**
      * Folds the credits into one per person, at the person's first billing
-     * position, with each distinct role once.
+     * position, with each distinct role once. The fold runs here rather than
+     * in the query: a card holds a list of roles, which one row per person
+     * cannot give without a JSON aggregation, and a movie has a few dozen
+     * credits at most, read in billing order for the page anyway.
      */
     private static List<CastCredit> castCredits(List<Principal> credits) {
-        Map<String, List<Principal>> creditsByPerson = credits.stream()
-                .collect(Collectors.groupingBy(credit -> credit.person().id(), LinkedHashMap::new, Collectors.toList()));
+        Map<Ref<Person>, List<Principal>> creditsByPerson = credits.stream()
+                .collect(Collectors.groupingBy(credit -> Ref.of(credit.person()), LinkedHashMap::new, Collectors.toList()));
         return creditsByPerson.values().stream()
                 .map(personCredits -> new CastCredit(
                         personCredits.getFirst().person(),
