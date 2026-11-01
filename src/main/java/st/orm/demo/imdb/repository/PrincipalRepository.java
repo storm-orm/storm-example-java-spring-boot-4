@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import st.orm.Ref;
 import st.orm.demo.imdb.model.Movie;
 import st.orm.demo.imdb.model.Person;
 import st.orm.demo.imdb.model.Principal;
@@ -78,12 +79,12 @@ public interface PrincipalRepository extends EntityRepository<Principal, Princip
                 .orderByDescending(RAW."COUNT(*)")
                 .limit(limit)
                 .getResultList();
-        Map<Object, Person> people = orm().entity(Person.class)
+        Map<Ref<Person>, Person> people = orm().entity(Person.class)
                 .findAllByRef(counts.stream().map(ActingCreditCount::person).toList())
                 .stream()
-                .collect(Collectors.toMap(person -> person.id(), Function.identity()));
+                .collect(Collectors.toMap(Ref::of, Function.identity()));
         return counts.stream()
-                .map(count -> new ProlificActor(people.get(count.person().id()), count.creditCount()))
+                .map(count -> new ProlificActor(people.get(count.person()), count.creditCount()))
                 .toList();
     }
 }

@@ -120,6 +120,42 @@ class MovieSummaryRepositoryTest {
     }
 
     @Test
+    void findMovieSuggestionsIgnoresTheNoiseWordsOfTitles(ORMTemplate orm) {
+        MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
+        // "the" is in five of the six titles; alone it suggests nothing.
+        assertEquals(List.of(), suggestedTitles(movieSummaryRepository, "the"));
+        assertEquals(List.of(), suggestedTitles(movieSummaryRepository, "THE"));
+        // Next to another word it takes no part: "the god" suggests what "god" does.
+        assertEquals(List.of("The Godfather"), suggestedTitles(movieSummaryRepository, "god"));
+        assertEquals(List.of("The Godfather"), suggestedTitles(movieSummaryRepository, "the god"));
+    }
+
+    @Test
+    void findMovieSuggestionsMatchesATwoLetterWordAtTheStartOfAWord(ORMTemplate orm) {
+        MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
+        assertEquals(List.of("The Godfather"), suggestedTitles(movieSummaryRepository, "go"));
+        assertEquals(List.of("The Matrix", "The Matrix Reloaded"), suggestedTitles(movieSummaryRepository, "ma"));
+        // Inside a word it does not match: "at" is in Matrix, but starts no word.
+        assertEquals(List.of(), suggestedTitles(movieSummaryRepository, "at"));
+        // A word of one letter takes no part, so it suggests nothing.
+        assertEquals(List.of(), suggestedTitles(movieSummaryRepository, "m"));
+        assertEquals(List.of(), suggestedTitles(movieSummaryRepository, "  "));
+    }
+
+    @Test
+    void findMovieSuggestionsIgnoresAccents(ORMTemplate orm) {
+        MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);
+        assertEquals(List.of("Amélie"), suggestedTitles(movieSummaryRepository, "amelie"));
+        assertEquals(List.of("Amélie"), suggestedTitles(movieSummaryRepository, "AMÉLIE"));
+        assertEquals(List.of("Amélie"), suggestedTitles(movieSummaryRepository, "fabuleux"));
+    }
+
+    private static List<String> suggestedTitles(MovieSummaryRepository movieSummaryRepository, String query) {
+        return movieSummaryRepository.findMovieSuggestions(query, 5)
+                .stream().map(MovieSummary::primaryTitle).toList();
+    }
+
+    @Test
     void scrollByGenreScrollsAGenreMostVotedFirst(ORMTemplate orm, SqlCapture capture) {
         GenreRepository genreRepository = orm.repository(GenreRepository.class);
         MovieSummaryRepository movieSummaryRepository = orm.repository(MovieSummaryRepository.class);

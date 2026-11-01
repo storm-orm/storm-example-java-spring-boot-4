@@ -8,6 +8,7 @@ import static st.orm.demo.imdb.repository.SearchText.folded;
 import static st.orm.demo.imdb.repository.SearchText.searchText;
 
 import java.util.List;
+import java.util.Set;
 import st.orm.Data;
 import st.orm.Scrollable;
 import st.orm.Window;
@@ -73,9 +74,14 @@ public interface MovieSummaryRepository extends ProjectionRepository<MovieSummar
      * orders them, so well-known movies surface first. The rank is computed
      * over the matched rows only, which the sort reads anyway. The box
      * queries on every keystroke, so it uses suggest rather than search:
-     * words of one or two letters, which the trigram indexes cannot serve,
-     * are ignored, and nothing is suggested until a word of three letters is
-     * typed; "de niro" suggests what "niro" does. Rating's foreign key
+     * every statement it renders is served by the trigram indexes of V1. A
+     * word of three letters or more matches anywhere and a word of two at
+     * the start of a word, so "up" suggests Up and in "de niro" "niro"
+     * matches anywhere and "de" at the start of a word. A word of one
+     * letter takes no part, and neither do the {@link #TITLE_NOISE}
+     * words, so "the god" suggests what "god" does, ranked by the whole
+     * query, which puts The Godfather first. An input with no word left,
+     * such as "a" or "the", suggests nothing. Rating's foreign key
      * references the Movie entity; the join onto this projection resolves
      * automatically because both map the same table.
      */
@@ -84,7 +90,7 @@ public interface MovieSummaryRepository extends ProjectionRepository<MovieSummar
         return select()
                 .innerJoin(Rating.class).on(MovieSummary.class)
                 .semiJoin(Principal.class).on(MovieSummary.class, MovieSummaryRepository::leadOrDirector)
-                .where(it -> it.suggest(title, folded(MovieSummary_.primaryTitle), folded(MovieSummary_.originalTitle), folded(Principal_.person.primaryName)))
+                .where(it -> it.suggest(title, TITLE_NOISE, folded(MovieSummary_.primaryTitle), folded(MovieSummary_.originalTitle), folded(Principal_.person.primaryName)))
                 .orderFirst(it -> titleEquals(it, title))
                 .orderFirst(it -> titleStartsWith(it, title))
                 .orderByDescending(Rating_.voteCount)
@@ -120,6 +126,22 @@ public interface MovieSummaryRepository extends ProjectionRepository<MovieSummar
     static Scrollable<MovieSummary> mostVotedFirst(int size) {
         return Scrollable.of(MovieSummary_.id, size).sortByDescending(Rating_.voteCount);
     }
+
+    /**
+     * The words the movie suggestions ignore: the articles and conjunctions most
+     * frequent in titles, in English and the catalogue's other main title
+     * languages. The trigram index serves them, but they match a large share of
+     * the rows and narrow nothing: typed alone they suggest a page of noise, and
+     * next to another word that word does the matching. The ranks still compare
+     * the whole query, so "the god" puts The Godfather first.
+     */
+    Set<String> TITLE_NOISE = Set.of(
+            "the", "and", "for", "with", "from",    // English
+            "les", "des", "une",                    // French
+            "der", "das", "und", "ein",             // German
+            "los", "las", "del", "una",             // Spanish, Italian
+            "het", "een"                            // Dutch
+    );
 
     /** The title or the original title equals the text, ignoring case. */
     private static PredicateBuilder<Data, ?, ?> titleEquals(WhereBuilder<Data, ?, ?> it, String text) {

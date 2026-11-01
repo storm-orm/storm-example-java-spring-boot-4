@@ -36,10 +36,26 @@ class PersonSummaryRepositoryTest {
     void findNameSuggestionsOrdersByName(ORMTemplate orm, SqlCapture capture) {
         PersonSummaryRepository personSummaryRepository = orm.repository(PersonSummaryRepository.class);
         List<PersonSummary> suggestions = capture.execute(() ->
-                personSummaryRepository.findNameSuggestions("an", 10));
+                personSummaryRepository.findNameSuggestions("ree", 10));
         TestSupport.printStatements(capture, "findNameSuggestions");
         assertEquals(List.of("Keanu Reeves", "Morgan Freeman"),
                 suggestions.stream().map(PersonSummary::primaryName).toList());
+    }
+
+    @Test
+    void findNameSuggestionsMatchesATwoLetterWordAtTheStartOfAWord(ORMTemplate orm) {
+        PersonSummaryRepository personSummaryRepository = orm.repository(PersonSummaryRepository.class);
+        // "fr" starts the second word of Morgan Freeman's name.
+        assertEquals(List.of("Morgan Freeman"), suggestedNames(personSummaryRepository, "fr"));
+        // "an" is in Keanu and Morgan, but starts no word.
+        assertEquals(List.of(), suggestedNames(personSummaryRepository, "an"));
+        // A word of one letter takes no part, so it suggests nothing.
+        assertEquals(List.of(), suggestedNames(personSummaryRepository, "k"));
+    }
+
+    private static List<String> suggestedNames(PersonSummaryRepository personSummaryRepository, String query) {
+        return personSummaryRepository.findNameSuggestions(query, 10)
+                .stream().map(PersonSummary::primaryName).toList();
     }
 
     @Test
